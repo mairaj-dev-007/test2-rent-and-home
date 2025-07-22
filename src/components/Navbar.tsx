@@ -72,7 +72,7 @@ const navLinks = [
       },
     ],
   },
-  { label: "Sell", dropdown: "Sell Link" },
+  { label: "Sell", dropdown: "Sell Link", href: "/sell" },
   { label: "Home Loans", dropdown: "Home Loans Link" },
   { label: "Agent Finder", dropdown: "Agent Finder Link" },
 ];
@@ -116,7 +116,7 @@ const Navbar = () => {
                   ) : (
                     <NavigationMenuLink
                       key={item.label}
-                      href="#"
+                      href={item.href || "#"}
                       className="text-black font-medium !bg-transparent hover:text-blue-600 px-4 py-2 rounded-md flex items-center"
                     >
                       {item.label}

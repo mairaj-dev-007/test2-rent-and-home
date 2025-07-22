@@ -62,7 +62,7 @@ export default function StaticMap({ houses, center, zoom }: StaticMapProps) {
           <Popup>
             <div>
               <img
-                src={house.images[0] || "/hero-section-image.jpg"}
+                src={house.images[0] || "/house.jpg"}
                 alt={house.title}
                 style={{ width: 120, height: 80, objectFit: "cover", borderRadius: 8 }}
               />
@@ -72,7 +72,7 @@ export default function StaticMap({ houses, center, zoom }: StaticMapProps) {
               </div>
               <button
                 className="mt-3 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-                onClick={() => router.push(`/listing/${house.id}`)}
+                onClick={() => router.push(`/houses/${house.id}`)}
               >
                 View details
               </button>
