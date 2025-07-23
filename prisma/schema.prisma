@@ -1,0 +1,102 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String   // Hashed password
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  userFavorites UserFavorite[]
+
+  @@map("users")
+}
+
+model House {
+  id                String   @id @default(cuid())
+  mongoId           String?  @unique // MongoDB ObjectId from data.json
+  zpid              Int?     @unique
+  streetAddress     String
+  city              String
+  state             String
+  zipcode           String
+  neighborhood      String?
+  community         String?
+  subdivision       String?
+  bedrooms          Int      @default(0)
+  bathrooms         Int      @default(0)
+  price             Float    @default(0)
+  yearBuilt         Int      @default(0)
+  longitude         Float    @default(0)
+  latitude          Float    @default(0)
+  homeStatus        String   @default("For Sale")
+  description       String   @default("")
+  livingArea        Int      @default(0)
+  currency          String   @default("USD")
+  homeType          String   @default("")
+  datePostedString  String
+  daysOnZillow      Int?
+  url               String   @default("")
+  version           Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  pictures      Picture[]
+  userFavorites UserFavorite[]
+
+  @@map("houses")
+  @@index([city, state])
+  @@index([homeStatus])
+  @@index([price])
+  @@index([latitude, longitude])
+  @@index([zpid])
+  @@index([mongoId])
+}
+
+model Picture {
+  id        String   @id @default(cuid())
+  url       String
+  altText   String?
+  isPrimary Boolean  @default(false)
+  order     Int      @default(0)
+  houseId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  house House @relation(fields: [houseId], references: [id], onDelete: Cascade)
+
+  @@map("pictures")
+  @@index([houseId])
+  @@index([isPrimary])
+}
+
+// Many-to-many relationship for user favorites
+model UserFavorite {
+  id       String @id @default(cuid())
+  userId   String
+  houseId  String
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  house House @relation(fields: [houseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, houseId])
+  @@map("user_favorites")
+}
