@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import SessionProvider from "@/components/providers/SessionProvider";
 
 // const geistSans = Geist({
 //   variable: "--font-geist-sans",
@@ -30,15 +31,17 @@ export default function RootLayout({
         className={`antialiased`}
         suppressHydrationWarning
       >
-        <div className="relative z-50">
-          <Navbar />
-        </div>
-        <div className="relative">
-          {children}
-        </div>
-        <div className="relative">
-          <Footer />
-        </div>
+        <SessionProvider>
+          <div className="relative z-50">
+            <Navbar />
+          </div>
+          <div className="relative">
+            {children}
+          </div>
+          <div className="relative">
+            <Footer />
+          </div>
+        </SessionProvider>
       </body>
     </html>
   );
