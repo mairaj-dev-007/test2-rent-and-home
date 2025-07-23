@@ -129,7 +129,6 @@ export default function ListingPage() {
   const [filtered, setFiltered] = useState<House[]>([]);
   const [loading, setLoading] = useState(true);
   const searchParams = useSearchParams();
-  const purpose = searchParams.get('purpose') || '';
 
   // Filter dialog state
   const [price, setPrice] = useState<number[]>([0, 2000000]);
@@ -176,23 +175,14 @@ export default function ListingPage() {
           updatedAt: item.updatedAt || new Date().toISOString(),
           __v: item.__v,
         }));
-        // Filter by purpose and status
-        let filteredByPurpose: House[] = [];
-        if (purpose === 'buy') {
-          filteredByPurpose = listings.filter((house: House) => house.homeStatus !== 'RECENTLY_SOLD' && house.homeStatus !== 'For Rent');
-        } else if (purpose === 'rent') {
-          filteredByPurpose = listings.filter((house: House) => house.homeStatus !== 'RECENTLY_SOLD' && house.homeStatus !== 'For Sale');
-        } else {
-          filteredByPurpose = listings.filter((house: House) => house.homeStatus !== 'RECENTLY_SOLD');
-        }
-        setHouses(filteredByPurpose.slice(0, 50));
+        setHouses(apiData.data);
         setLoading(false);
       })
       .catch((error) => {
         console.error('Error fetching houses:', error);
         setLoading(false);
       });
-  }, [purpose]);
+  }, []);
 
   useEffect(() => {
     const q = search.toLowerCase();
@@ -255,8 +245,8 @@ export default function ListingPage() {
   }
 
   const getPageTitle = () => {
-    if (purpose === 'rent') return 'Rent properties';
-    if (purpose === 'buy') return 'Buy properties';
+    // if (purpose === 'rent') return 'Rent properties';
+    // if (purpose === 'buy') return 'Buy properties';
     return 'All properties';
   };
 
