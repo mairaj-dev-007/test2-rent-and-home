@@ -23,13 +23,13 @@ model User {
 
   // Relations
   userFavorites UserFavorite[]
+  houses House[]
 
   @@map("users")
 }
 
 model House {
   id                String   @id @default(cuid())
-  mongoId           String?  @unique // MongoDB ObjectId from data.json
   zpid              Int?     @unique
   streetAddress     String
   city              String
@@ -50,13 +50,12 @@ model House {
   currency          String   @default("USD")
   homeType          String   @default("")
   datePostedString  String
-  daysOnZillow      Int?
-  url               String   @default("")
-  version           Int      @default(0)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
   // Relations
+  ownerId          String
+  owner            User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   pictures      Picture[]
   userFavorites UserFavorite[]
 
@@ -66,7 +65,6 @@ model House {
   @@index([price])
   @@index([latitude, longitude])
   @@index([zpid])
-  @@index([mongoId])
 }
 
 model Picture {

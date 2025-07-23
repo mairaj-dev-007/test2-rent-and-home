@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { Button } from './ui/button'
-import { Heart, User, LogOut, Eye, EyeOff, Mail, Lock } from "lucide-react";
+import { Heart, User, LogOut, Eye, EyeOff, Mail, Lock, ChevronDown, LayoutDashboard, Settings } from "lucide-react";
 import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
 import {
@@ -17,11 +17,13 @@ import {
   AlertDialogAction,
 } from '@/components/ui/alert-dialog';
 import { Input } from './ui/input';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "./ui/dropdown-menu"
 
 const navLinks = [
-  { label: "Buy", href: "/buy" },
+  { label: "All Properties", href: "/houses" },
+  { label: "Buy", href: "/houses?purpose=buy" },
+  { label: "Rent", href: "/houses?purpose=rent" },
   { label: "Sell", href: "/sell" },
-  { label: "Rent", href: "/rent" },
 ];
 
 const Navbar = () => {
@@ -101,41 +103,71 @@ const Navbar = () => {
 
           {/* Navigation Links */}
           <div className="hidden md:flex items-center gap-6">
-            {navLinks.map((item) => (
+                {navLinks.map((item) => (
               <Link
                 key={item.label}
                 href={item.href}
                 className="text-black font-medium px-2 py-2 rounded-md transition-colors hover:text-blue-600"
-              >
-                {item.label}
-              </Link>
-            ))}
+                      >
+                        {item.label}
+                                    </Link>
+                                ))}
           </div>
 
           {/* Right side buttons */}
           <div className="flex items-center gap-4">
-            {/* Favorites */}
-            <Button variant="ghost" size="sm" className="text-gray-600 hover:text-blue-600">
-              <Heart className="h-5 w-5" />
-            </Button>
-
             {/* Authentication */}
             {status === 'loading' ? (
               <div className="h-8 w-20 bg-gray-200 rounded animate-pulse" />
             ) : session ? (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600 hidden sm:block">
-                  {session.user?.name || session.user?.email}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleSignOut}
-                  className="text-gray-600 hover:text-red-600"
-                >
-                  <LogOut className="h-4 w-4" />
-                </Button>
-              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-10 w-10 rounded-full p-0 bg-blue-600 border-blue-600 hover:bg-blue-700">
+                    <User className="h-5 w-5 text-white" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem className="flex flex-col items-start p-3">
+                    <div className="flex items-center gap-2 w-full">
+                      <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-semibold">
+                        {session.user?.name?.charAt(0) || session.user?.email?.charAt(0) || 'U'}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium text-gray-900">
+                          {session.user?.name || 'User'}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {session.user?.email}
+                        </span>
+                      </div>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard" className="flex items-center gap-2 w-full">
+                      <LayoutDashboard className="h-4 w-4" />
+                      Dashboard
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/profile" className="flex items-center gap-2 w-full">
+                      <User className="h-4 w-4" />
+                      Profile
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/favorites" className="flex items-center gap-2 w-full">
+                      <Heart className="h-4 w-4" />
+                      Favorites
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut} variant="destructive" className="flex items-center gap-2">
+                    <LogOut className="h-4 w-4" />
+                    Sign out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : (
               <AlertDialog open={open} onOpenChange={setOpen}>
                 <AlertDialogTrigger asChild>
@@ -164,7 +196,7 @@ const Navbar = () => {
                     {success && (
                       <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md text-sm">
                         {success}
-                      </div>
+                            </div>
                     )}
                     {isSignUp && (
                       <div>

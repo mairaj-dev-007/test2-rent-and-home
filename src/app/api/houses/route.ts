@@ -1,59 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '20')
-    const search = searchParams.get('search') || ''
-    const homeStatus = searchParams.get('homeStatus') || ''
-    const minPrice = searchParams.get('minPrice') ? parseFloat(searchParams.get('minPrice')!) : undefined
-    const maxPrice = searchParams.get('maxPrice') ? parseFloat(searchParams.get('maxPrice')!) : undefined
-    const bedrooms = searchParams.get('bedrooms') ? parseInt(searchParams.get('bedrooms')!) : undefined
-    const bathrooms = searchParams.get('bathrooms') ? parseInt(searchParams.get('bathrooms')!) : undefined
+    const status = searchParams.get('status');
+    const exclude = searchParams.get('exclude');
+    const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined;
 
-    const skip = (page - 1) * limit
+    const where: any = {};
+    if (status) where.homeStatus = status;
+    if (exclude) where.id = { not: exclude };
 
-    // Build where clause
-    const where: any = {}
-
-    if (search) {
-      where.OR = [
-        { streetAddress: { contains: search, mode: 'insensitive' } },
-        { city: { contains: search, mode: 'insensitive' } },
-        { state: { contains: search, mode: 'insensitive' } },
-        { zipcode: { contains: search, mode: 'insensitive' } },
-        { homeType: { contains: search, mode: 'insensitive' } },
-      ]
-    }
-
-    if (homeStatus) {
-      where.homeStatus = homeStatus
-    }
-
-    if (minPrice !== undefined || maxPrice !== undefined) {
-      where.price = {}
-      if (minPrice !== undefined) where.price.gte = minPrice
-      if (maxPrice !== undefined) where.price.lte = maxPrice
-    }
-
-    if (bedrooms !== undefined) {
-      where.bedrooms = bedrooms
-    }
-
-    if (bathrooms !== undefined) {
-      where.bathrooms = bathrooms
-    }
-
-    // Get total count for pagination
-    const total = await prisma.house.count({ where })
-
-    // Get houses with pagination and include pictures
     const houses = await prisma.house.findMany({
       where,
-      skip,
-      take: limit,
       include: {
         pictures: {
           orderBy: { order: 'asc' }
@@ -61,21 +23,13 @@ export async function GET(request: NextRequest) {
       },
       orderBy: {
         createdAt: 'desc'
-      }
+      },
+      ...(limit ? { take: limit } : {}),
     })
 
     return NextResponse.json({
-      data: houses,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-        hasNext: page * limit < total,
-        hasPrev: page > 1
-      }
+      data: houses
     })
-
   } catch (error) {
     console.error('Database error:', error)
     return NextResponse.json(
@@ -87,34 +41,40 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Get the current user session
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
     const body = await request.json()
     
     const house = await prisma.house.create({
       data: {
-        mongoId: body._id || body.mongoId,
-        zpid: body.zpid,
-        streetAddress: body.address?.streetAddress || body.streetAddress || '',
-        city: body.address?.city || body.city || '',
-        state: body.address?.state || body.state || '',
-        zipcode: body.address?.zipcode || body.zipcode || '',
-        neighborhood: body.address?.neighborhood || body.neighborhood,
-        community: body.address?.community || body.community,
-        subdivision: body.address?.subdivision || body.subdivision,
+        streetAddress: body.streetAddress || '',
+        city: body.city || '',
+        state: body.state || '',
+        zipcode: body.zipcode || '',
+        neighborhood: body.neighborhood,
+        community: body.community,
+        subdivision: body.subdivision,
         bedrooms: body.bedrooms || 0,
         bathrooms: body.bathrooms || 0,
         price: body.price || 0,
         yearBuilt: body.yearBuilt || 0,
         longitude: body.longitude || 0,
         latitude: body.latitude || 0,
-        homeStatus: body.homeStatus || 'For Sale',
+        homeStatus: body.homeStatus || 'FOR_SALE',
         description: body.description || '',
         livingArea: body.livingArea || 0,
         currency: body.currency || 'USD',
         homeType: body.homeType || '',
         datePostedString: body.datePostedString || new Date().toISOString(),
-        daysOnZillow: body.daysOnZillow,
-        url: body.url || '',
-        version: body.__v || body.version || 0,
+        ownerId: session.user.id,
       }
     })
 

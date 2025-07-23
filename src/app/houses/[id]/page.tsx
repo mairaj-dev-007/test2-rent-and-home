@@ -27,18 +27,16 @@ import {
 const StaticMap = dynamic(() => import("@/components/StaticMap"), { ssr: false });
 
 interface House {
-  _id: string;
+  id: string;
   zpid?: number;
-  address: {
-    streetAddress: string;
-    city: string;
-    state: string;
-    zipcode: string;
-    neighborhood?: string | null;
-    community?: string | null;
-    subdivision?: string | null;
-  };
-  photos: string[];
+  streetAddress: string;
+  city: string;
+  state: string;
+  zipcode: string;
+  neighborhood?: string | null;
+  community?: string | null;
+  subdivision?: string | null;
+  pictures?: { url: string }[];
   bedrooms: number;
   bathrooms: number;
   price: number;
@@ -62,105 +60,30 @@ export default function ListingDetailPage() {
   const { id } = useParams();
   const [house, setHouse] = useState<House | null>(null);
   const [loading, setLoading] = useState(true);
-  const [allHouses, setAllHouses] = useState<House[]>([]);
+  const [similarHouses, setSimilarHouses] = useState<House[]>([]);
 
   useEffect(() => {
-    fetch("/api/homes?page=1&limit=500")
+    setLoading(true);
+    fetch(`/api/houses/${id}`)
       .then((res) => res.json())
       .then((apiData) => {
-        const listings = (apiData.data || []).map((item: any) => ({
-          _id: item._id || item.zpid || item.id,
-          zpid: item.zpid,
-          address: {
-            streetAddress: item.address?.streetAddress || "",
-            city: item.address?.city || "",
-            state: item.address?.state || "",
-            zipcode: item.address?.zipcode || "",
-            neighborhood: item.address?.neighborhood || null,
-            community: item.address?.community || null,
-            subdivision: item.address?.subdivision || null,
-          },
-          photos: item.photos || [],
-          bedrooms: item.bedrooms || 0,
-          bathrooms: item.bathrooms || 0,
-          price: item.price || 0,
-          yearBuilt: item.yearBuilt || 0,
-          longitude: item.longitude || 0,
-          latitude: item.latitude || 0,
-          homeStatus: item.homeStatus || "",
-          description: item.description || "",
-          livingArea: item.livingArea || 0,
-          currency: item.currency || "USD",
-          homeType: item.homeType || "",
-          datePostedString: item.datePostedString || item.createdAt || new Date().toISOString(),
-          daysOnZillow: item.daysOnZillow,
-          url: item.url || "",
-          createdAt: item.createdAt || new Date().toISOString(),
-          updatedAt: item.updatedAt || new Date().toISOString(),
-          __v: item.__v,
-        }));
-        setAllHouses(listings);
-      });
-  }, []);
-
-  // Find 5 nearest houses (excluding itself)
-  const nearestHouses = useMemo(() => {
-    if (!house || !house.latitude || !house.longitude || allHouses.length === 0) return [];
-    return allHouses
-      .filter((h) => h._id !== house._id && h.latitude && h.longitude)
-      .map((h) => ({
-        ...h,
-        dist: Math.sqrt(
-          Math.pow(h.latitude - house.latitude, 2) + Math.pow(h.longitude - house.longitude, 2)
-        ),
-      }))
-      .sort((a, b) => a.dist - b.dist)
-      .slice(0, 5);
-  }, [house, allHouses]);
-
-  useEffect(() => {
-    fetch("/api/homes?page=1&limit=500")
-      .then((res) => res.json())
-      .then((apiData) => {
-        const listings = (apiData.data || []).map((item: any) => ({
-          _id: item._id || item.zpid || item.id,
-          zpid: item.zpid,
-          address: {
-            streetAddress: item.address?.streetAddress || "",
-            city: item.address?.city || "",
-            state: item.address?.state || "",
-            zipcode: item.address?.zipcode || "",
-            neighborhood: item.address?.neighborhood || null,
-            community: item.address?.community || null,
-            subdivision: item.address?.subdivision || null,
-          },
-          photos: item.photos || [],
-          bedrooms: item.bedrooms || 0,
-          bathrooms: item.bathrooms || 0,
-          price: item.price || 0,
-          yearBuilt: item.yearBuilt || 0,
-          longitude: item.longitude || 0,
-          latitude: item.latitude || 0,
-          homeStatus: item.homeStatus || "",
-          description: item.description || "",
-          livingArea: item.livingArea || 0,
-          currency: item.currency || "USD",
-          homeType: item.homeType || "",
-          datePostedString: item.datePostedString || item.createdAt || new Date().toISOString(),
-          daysOnZillow: item.daysOnZillow,
-          url: item.url || "",
-          createdAt: item.createdAt || new Date().toISOString(),
-          updatedAt: item.updatedAt || new Date().toISOString(),
-          __v: item.__v,
-        }));
-        const foundHouse = listings.find((h: House) => h._id === id);
-        setHouse(foundHouse || null);
+        setHouse(apiData.data);
         setLoading(false);
       })
       .catch(() => {
         setLoading(false);
       });
   }, [id]);
+
+  useEffect(() => {
+    if (!house) return;
+    // Fetch 5 houses with the same status, excluding the current house
+    fetch(`/api/houses?status=${encodeURIComponent(house.homeStatus)}&exclude=${house.id}&limit=5`)
+      .then((res) => res.json())
+      .then((apiData) => {
+        setSimilarHouses(apiData.data || []);
+      });
+  }, [house]);
 
   if (loading) return (
     <div className="max-w-7xl mx-auto px-4 py-10 animate-pulse">
@@ -302,15 +225,11 @@ export default function ListingDetailPage() {
   );
   if (!house) return <div className="p-12 text-center text-lg text-red-500">House not found.</div>;
 
-  const isRent = house.homeStatus === 'For Rent';
-  const isSale = house.homeStatus === 'For Sale';
+  const isRent = house.homeStatus === 'FOR_RENT';
+  const isSale = house.homeStatus === 'FOR_SALE';
   const isSold = house.homeStatus === 'RECENTLY_SOLD';
 
   const pricePerSqft = house.price && house.livingArea ? Math.round(house.price / house.livingArea) : null;
-
-  function formatAddress(address: House["address"]): string {
-    return `${address.streetAddress}, ${address.city}, ${address.state}, ${address.zipcode}`;
-  }
 
   // Responsive class for max-w-4xl but full width on larger screens
   const carouselContainerClass = "w-full max-w-4xl xl:max-w-4xl 2xl:max-w-none";
@@ -329,7 +248,7 @@ export default function ListingDetailPage() {
       <div className="mb-8 px-3">
         <div className="relative w-full max-w-7xl mx-auto rounded-2xl overflow-hidden shadow-lg">
           {/* View all photos button (overlapping carousel, top-right) */}
-          {house.photos.length > 0 ? (
+          {(house.pictures?.length ?? 0) > 0 ? (
             <>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -341,18 +260,18 @@ export default function ListingDetailPage() {
                   <AlertDialogHeader className="sticky top-0 z-10 bg-white shadow-sm flex flex-row items-center justify-between px-8 py-4 border-b">
                     <div className="flex items-center gap-4">
                       <AlertDialogTitle className="text-2xl font-bold">All Photos</AlertDialogTitle>
-                      <span className="text-base text-gray-500 font-medium">{house.photos.length} photo{house.photos.length > 1 ? 's' : ''}</span>
+                      <span className="text-base text-gray-500 font-medium">{house.pictures?.length ?? 0} photo{(house.pictures?.length ?? 0) > 1 ? 's' : ''}</span>
                     </div>
                     <AlertDialogCancel className="rounded-full p-2 bg-gray-100 hover:bg-gray-200 ml-auto">
                       <X className="w-6 h-6" />
                     </AlertDialogCancel>
                   </AlertDialogHeader>
                   <div className="max-h-[75vh] overflow-y-auto p-8 grid gap-8 bg-white">
-                    {house.photos.map((img, i) => (
+                    {house.pictures?.map((img, i) => (
                       <img
                         key={i}
-                        src={img}
-                        alt={house.address.streetAddress}
+                        src={img.url}
+                        alt={house.streetAddress}
                         className="w-full max-h-[70vh] object-contain rounded-xl border"
                       />
                     ))}
@@ -362,12 +281,12 @@ export default function ListingDetailPage() {
               {/* Simple custom photo carousel */}
               <Carousel className="w-full h-[450px]" opts={{ loop: true, align: "start", slidesToScroll: 1 }}>
                 <CarouselContent>
-                  {house.photos.map((img, i) => (
+                  {house.pictures?.map((img, i) => (
                     <CarouselItem key={i}>
                       <div className="w-full h-[450px] flex items-center justify-center bg-gray-100 rounded-2xl overflow-hidden">
                         <img
-                          src={img}
-                          alt={house.address.streetAddress}
+                          src={img.url}
+                          alt={house.streetAddress}
                           className="w-full h-full object-cover"
                         />
                       </div>
@@ -409,7 +328,7 @@ export default function ListingDetailPage() {
           <Badge variant={isSold ? "secondary" : "default"}>{isSold ? "Sold" : house.homeStatus}</Badge>
           <div className="flex items-center gap-2">
             <MapPin className="w-6 h-6 text-blue-600" />
-            <span className="font-semibold">{house.address.city}, {house.address.state}</span>
+            <span className="font-semibold">{house.city}, {house.state}</span>
           </div>
         </div>
       </Card>
@@ -417,14 +336,14 @@ export default function ListingDetailPage() {
       {/* Title, Price, Main Stats */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-2">
         <h1 className="text-3xl font-bold flex items-center gap-2">
-          <Home className="text-blue-600" /> {house.address.streetAddress}
+          <Home className="text-blue-600" /> {house.streetAddress}
         </h1>
         <div className="text-3xl font-semibold text-blue-700">{house.currency} {house.price.toLocaleString()}</div>
       </div>
       <div className="flex flex-wrap gap-4 items-center mb-2">
         <div className="flex items-center gap-2 text-gray-600">
           <MapPin className="w-5 h-5" />
-          {house.address.streetAddress}, {house.address.city}, {house.address.state} {house.address.zipcode}
+          {house.streetAddress}, {house.city}, {house.state} {house.zipcode}
         </div>
         <Badge variant={isSold ? "secondary" : "default"}>{isSold ? "Sold" : house.homeStatus}</Badge>
         <Badge variant="secondary">Listed: {house.datePostedString}</Badge>
@@ -447,7 +366,7 @@ export default function ListingDetailPage() {
       {/* Iconic Details Section */}
       <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-8 bg-white rounded-xl p-8 border border-gray-100 shadow-sm">
         <div className="space-y-4">
-          <div className="flex items-center gap-3"><MapPin className="w-5 h-5 text-blue-600" /><span className="font-semibold">Address:</span> {house.address.streetAddress}, {house.address.city}, {house.address.state} {house.address.zipcode}</div>
+          <div className="flex items-center gap-3"><MapPin className="w-5 h-5 text-blue-600" /><span className="font-semibold">Address:</span> {house.streetAddress}, {house.city}, {house.state} {house.zipcode}</div>
           <div className="flex items-center gap-3"><Tag className="w-5 h-5 text-gray-500" /><span className="font-semibold">Status:</span><Badge variant="secondary" className="ml-2">{house.homeStatus}</Badge></div>
           <div className="flex items-center gap-3"><Home className="w-5 h-5 text-blue-600" /><span className="font-semibold">Type:</span> {house.homeType}</div>
           <div className="flex items-center gap-3"><Ruler className="w-5 h-5 text-purple-600" /><span className="font-semibold">Living Area:</span> {house.livingArea.toLocaleString()} sqft</div>
@@ -461,9 +380,9 @@ export default function ListingDetailPage() {
         </div>
         <div className="space-y-4">
           <div className="flex items-center gap-3"><Hash className="w-5 h-5 text-gray-500" /><span className="font-semibold">ZPID:</span> {house.zpid ?? 'N/A'}</div>
-          <div className="flex items-center gap-3"><MapPin className="w-5 h-5 text-gray-400" /><span className="font-semibold">Neighborhood:</span> {house.address.neighborhood ?? 'N/A'}</div>
-          <div className="flex items-center gap-3"><Users className="w-5 h-5 text-blue-400" /><span className="font-semibold">Community:</span> {house.address.community ?? 'N/A'}</div>
-          <div className="flex items-center gap-3"><Layers className="w-5 h-5 text-purple-400" /><span className="font-semibold">Subdivision:</span> {house.address.subdivision ?? 'N/A'}</div>
+          <div className="flex items-center gap-3"><MapPin className="w-5 h-5 text-gray-400" /><span className="font-semibold">Neighborhood:</span> {house.neighborhood ?? 'N/A'}</div>
+          <div className="flex items-center gap-3"><Users className="w-5 h-5 text-blue-400" /><span className="font-semibold">Community:</span> {house.community ?? 'N/A'}</div>
+          <div className="flex items-center gap-3"><Layers className="w-5 h-5 text-purple-400" /><span className="font-semibold">Subdivision:</span> {house.subdivision ?? 'N/A'}</div>
           <div className="flex items-center gap-3"><Globe className="w-5 h-5 text-green-500" /><span className="font-semibold">Latitude:</span> {house.latitude}</div>
           <div className="flex items-center gap-3"><Globe className="w-5 h-5 text-green-500" /><span className="font-semibold">Longitude:</span> {house.longitude}</div>
         </div>
@@ -474,12 +393,12 @@ export default function ListingDetailPage() {
         <div className="w-full h-72 rounded-xl overflow-hidden shadow">
           <StaticMap
             houses={[{
-              id: house._id,
-              title: house.address.streetAddress,
-              images: house.photos,
+              id: house.id,
+              title: house.streetAddress,
+              images: house.pictures?.map(p => p.url) || [],
               address: {
-                city: house.address.city,
-                state: house.address.state,
+                city: house.city,
+                state: house.state,
               },
               location: {
                 lat: house.latitude,
@@ -498,27 +417,27 @@ export default function ListingDetailPage() {
           className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 text-lg ${isSold ? 'opacity-60 cursor-not-allowed' : ''}`}
           disabled={isSold}
         >
-          {isSold ? 'Sold' : isRent ? 'Rent this house' : 'Buy this house'}
+          {isSold ? 'Sold' : 'Schedule a Tour'}
         </Button>
       </div>
       {/* Similar homes carousel section */}
-      {nearestHouses.length > 0 && (
+      {similarHouses.length > 0 && (
         <div className="flex flex-row gap-8 mb-12">
           <div className={`${carouselContainerClass} grow`}>
             <Carousel className="relative" opts={{ loop: true }}>
               <CarouselContent>
-                {nearestHouses.map((house) => (
+                {similarHouses.map((house) => (
                   <CarouselItem
-                    key={house._id}
+                    key={house.id}
                     className="flex flex-col items-stretch basis-full sm:basis-1/2 xl:basis-1/3"
                   >
-                    <Link href={`/houses/${house._id}`} className="block group">
+                    <Link href={`/houses/${house.id}`} className="block group">
                       <Card className="min-w-[250px] !pt-0 pb-0 gap-0 rounded-lg shadow-sm border-0 overflow-hidden bg-white h-full flex flex-col hover:scale-101 transition-all duration-300 group-hover:shadow-md">
                         {/* Image Section */}
                         <div className="relative">
                           <img
-                            src={house.photos[0]}
-                            alt={house.address.streetAddress}
+                            src={house.pictures?.[0]?.url || "/house.jpg"}
+                            alt={house.streetAddress}
                             className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-300"
                             onError={(e) => (e.currentTarget.src = "/house.jpg")}
                           />
@@ -545,10 +464,10 @@ export default function ListingDetailPage() {
                           {/* Address (2 lines) */}
                           <div className="mb-1.5">
                             <div className="text-sm font-bold text-gray-900 group-hover:text-blue-700 transition-colors">
-                              {house.address.streetAddress}
+                              {house.streetAddress}
                             </div>
                             <div className="text-xs text-gray-700">
-                              {house.address.city}, {house.address.state} {house.address.zipcode}
+                              {house.city}, {house.state} {house.zipcode}
                             </div>
                           </div>
                           {/* Key Features Grid */}
@@ -573,7 +492,7 @@ export default function ListingDetailPage() {
                           <div className="flex items-center justify-between mb-2 text-xs text-gray-600">
                             <div className="flex items-center gap-1">
                               <MapPin className="w-2.5 h-2.5 text-red-500" />
-                              <span className="truncate">{house.address.city}, {house.address.state}</span>
+                              <span className="truncate">{house.city}, {house.state}</span>
                             </div>
                             <div className="flex items-center gap-1">
                               <Calendar className="w-2.5 h-2.5 text-gray-400" />
@@ -588,7 +507,7 @@ export default function ListingDetailPage() {
                             <Eye className="w-2.5 h-2.5 mr-1" />
                             {house.homeStatus === 'RECENTLY_SOLD'
                               ? 'Sold'
-                              : house.homeStatus === 'For Rent'
+                              : house.homeStatus === 'FOR_RENT'
                                 ? 'Rent this house'
                                 : 'Buy this house'}
                           </Button>

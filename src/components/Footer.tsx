@@ -4,56 +4,9 @@ import { cn } from "@/lib/utils"
 import { FaFacebook, FaInstagram, FaTwitter } from "react-icons/fa";
 import { GrHome } from "react-icons/gr";
 
-const FooterLinks = [
-  { label: "About", href: "#" },
-  { label: "Zestimates", href: "#" },
-  { label: "Research", href: "#" },
-  { label: "Careers", href: "#" },
-  { label: "Help", href: "#" },
-  { label: "Advertise", href: "#" },
-  { label: "Fair Housing Guide", href: "#" },
-  { label: "Terms of use", href: "#" },
-  { label: "Privacy Portal", href: "#" },
-  { label: "Cookie Preference", href: "#" },
-  { label: "Blog", href: "#" },
-  { label: "AI", href: "#" },
-  { label: "Mobile Apps", href: "#" },
-  { label: "Trulia", href: "#" },
-  { label: "StreetEasy", href: "#" },
-  { label: "HotPads", href: "#" },
-  { label: "Out East", href: "#" },
-  { label: "ShowingTime", href: "#" },
-  { label: "Do Not Sell My Personal Information→", href: "#" },
-];
-
 const Footer = () => {
   return (
     <footer className={cn("relative w-full px-20 bg-white border-t border-gray-200 pt-8 pb-0 flex flex-col items-center text-center z-10")}>  
-      {/* Footer Links Section */}
-      <div className="w-full flex flex-col items-center mb-6 border-b border-t border-black py-10">
-        <div className="flex flex-wrap justify-center gap-x-8 gap-y-2 text-blue-600 text-base font-medium mb-2">
-          {FooterLinks.slice(0, 10).map((link, i) => (
-            <a
-              key={i}
-              href={link.href}
-              className="underline underline-offset-2 hover:text-blue-800 transition-colors"
-            >
-              {link.label}
-            </a>
-          ))}
-        </div>
-        <div className="flex flex-wrap justify-center gap-x-8 gap-y-2 text-blue-600 text-base font-medium">
-          {FooterLinks.slice(10).map((link, i) => (
-            <a
-              key={i}
-              href={link.href}
-              className="underline underline-offset-2 hover:text-blue-800 transition-colors"
-            >
-              {link.label}
-            </a>
-          ))}
-        </div>
-      </div>
       {/* Legal/Disclaimer Section */}
       <div className="text-sm max-w-5xl mx-auto px-4 text-gray-500 text-base mb-6">
         <p>

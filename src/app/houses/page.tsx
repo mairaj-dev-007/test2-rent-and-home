@@ -26,18 +26,17 @@ import { Slider } from "@/components/ui/slider";
 const StaticMap = dynamic(() => import("@/components/StaticMap"), { ssr: false });
 
 interface House {
-  _id: string;
+  id: string;
   zpid?: number;
-  address: {
-    streetAddress: string;
-    city: string;
-    state: string;
-    zipcode: string;
-    neighborhood?: string | null;
-    community?: string | null;
-    subdivision?: string | null;
-  };
+  streetAddress: string;
+  city: string;
+  state: string;
+  zipcode: string;
+  neighborhood?: string | null;
+  community?: string | null;
+  subdivision?: string | null;
   photos: string[];
+  pictures?: { url: string }[];
   bedrooms: number;
   bathrooms: number;
   price: number;
@@ -57,8 +56,8 @@ interface House {
   __v?: number;
 }
 
-function formatAddress(address: House["address"]): string {
-  return `${address.streetAddress}, ${address.city}, ${address.state}, ${address.zipcode}`;
+function formatAddress(house: House): string {
+  return `${house.streetAddress}, ${house.city}, ${house.state}, ${house.zipcode}`;
 }
 
 // Skeleton component for house cards
@@ -129,6 +128,8 @@ export default function ListingPage() {
   const [filtered, setFiltered] = useState<House[]>([]);
   const [loading, setLoading] = useState(true);
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const purpose = searchParams.get('purpose');
 
   // Filter dialog state
   const [price, setPrice] = useState<number[]>([0, 2000000]);
@@ -141,66 +142,65 @@ export default function ListingPage() {
 
   useEffect(() => {
     setLoading(true);
-    fetch("/api/homes")
+    // Build query string from filters
+    const params = new URLSearchParams();
+    if (purpose) params.set('purpose', purpose);
+    if (search) params.set('search', search);
+    if (price[0] !== 0 || price[1] !== 2000000) {
+      params.set('minPrice', price[0].toString());
+      params.set('maxPrice', price[1].toString());
+    }
+    if (area[0] !== 0 || area[1] !== 10000) {
+      params.set('minArea', area[0].toString());
+      params.set('maxArea', area[1].toString());
+    }
+    if (bedrooms !== 'any') params.set('bedrooms', bedrooms);
+    if (bathrooms !== 'any') params.set('bathrooms', bathrooms);
+    if (homeTypes.length > 0) params.set('homeTypes', homeTypes.join(','));
+    if (propertyStatus !== 'any') params.set('propertyStatus', propertyStatus);
+    const url = `/api/houses?${params.toString()}`;
+    fetch(url)
       .then((res) => res.json())
       .then((apiData) => {
-        const listings = (apiData.data || []).map((item: any) => ({
-          _id: item._id || item.zpid || item.id,
-          zpid: item.zpid,
-          address: {
-            streetAddress: item.address?.streetAddress || "",
-            city: item.address?.city || "",
-            state: item.address?.state || "",
-            zipcode: item.address?.zipcode || "",
-            neighborhood: item.address?.neighborhood || null,
-            community: item.address?.community || null,
-            subdivision: item.address?.subdivision || null,
-          },
-          photos: item.photos || [],
-          bedrooms: item.bedrooms || 0,
-          bathrooms: item.bathrooms || 0,
-          price: item.price || 0,
-          yearBuilt: item.yearBuilt || 0,
-          longitude: item.longitude || 0,
-          latitude: item.latitude || 0,
-          homeStatus: item.homeStatus || "",
-          description: item.description || "",
-          livingArea: item.livingArea || 0,
-          currency: item.currency || "USD",
-          homeType: item.homeType || "",
-          datePostedString: item.datePostedString || item.createdAt || new Date().toISOString(),
-          daysOnZillow: item.daysOnZillow,
-          url: item.url || "",
-          createdAt: item.createdAt || new Date().toISOString(),
-          updatedAt: item.updatedAt || new Date().toISOString(),
-          __v: item.__v,
-        }));
         setHouses(apiData.data);
+        setFiltered(apiData.data);
         setLoading(false);
       })
       .catch((error) => {
         console.error('Error fetching houses:', error);
         setLoading(false);
       });
-  }, []);
+  }, [purpose, search, price, area, bedrooms, bathrooms, homeTypes, propertyStatus]);
 
   useEffect(() => {
     const q = search.toLowerCase();
     let filteredList = houses.filter((h) => {
+      // Purpose filter
+      if (purpose === 'rent' && h.homeStatus !== 'FOR_RENT') return false;
+      if (purpose === 'buy' && h.homeStatus !== 'FOR_SALE') return false;
+      // Search filter
       return (
-        h.address.state.toLowerCase().includes(q) ||
-        h.address.city.toLowerCase().includes(q) ||
-        h.homeType.toLowerCase().includes(q) ||
-        h.price.toString().includes(q) ||
-        h.bedrooms.toString().includes(q) ||
-        h.bathrooms.toString().includes(q) ||
-        h.livingArea.toString().includes(q) ||
-        h.address.streetAddress.toLowerCase().includes(q) ||
-        h.address.zipcode.toLowerCase().includes(q)
+        h.state?.toLowerCase().includes(q) ||
+        h.city?.toLowerCase().includes(q) ||
+        h.homeType?.toLowerCase().includes(q) ||
+        h.price?.toString().includes(q) ||
+        h.bedrooms?.toString().includes(q) ||
+        h.bathrooms?.toString().includes(q) ||
+        h.livingArea?.toString().includes(q) ||
+        h.streetAddress?.toLowerCase().includes(q) ||
+        h.zipcode?.toLowerCase().includes(q)
       );
     });
     setFiltered(filteredList);
-  }, [search, houses]);
+  }, [search, houses, purpose]);
+
+  useEffect(() => {
+    // Set search input value from URL on mount
+    const searchParam = searchParams.get('search');
+    if (searchParam && searchParam !== search) {
+      setSearch(searchParam);
+    }
+  }, []);
 
   // Helper: filter houses based on filter state
   function filterHouses(houses: House[]) {
@@ -219,8 +219,8 @@ export default function ListingPage() {
       if (homeTypes.length > 0 && !homeTypes.includes(h.homeType)) return false;
       // Property Status
       if (propertyStatus !== "any") {
-        if (propertyStatus === "for-sale" && h.homeStatus !== "For Sale") return false;
-        if (propertyStatus === "for-rent" && h.homeStatus !== "For Rent") return false;
+        if (propertyStatus === "for-sale" && h.homeStatus !== "FOR_SALE") return false;
+        if (propertyStatus === "for-rent" && h.homeStatus !== "FOR_RENT") return false;
         if (propertyStatus === "sold" && h.homeStatus !== "RECENTLY_SOLD") return false;
       }
       return true;
@@ -241,12 +241,21 @@ export default function ListingPage() {
     setBathrooms("any");
     setHomeTypes([]);
     setPropertyStatus("any");
+    setSearch("");
     setFiltered(houses);
+    // Preserve 'purpose' in the URL if it exists
+    const params = new URLSearchParams(window.location.search);
+    const purpose = params.get('purpose');
+    if (purpose) {
+      router.push(`/houses?purpose=${encodeURIComponent(purpose)}`);
+    } else {
+      router.push('/houses');
+    }
   }
 
   const getPageTitle = () => {
-    // if (purpose === 'rent') return 'Rent properties';
-    // if (purpose === 'buy') return 'Buy properties';
+    if (purpose === 'rent') return 'Rent properties';
+    if (purpose === 'buy') return 'Buy properties';
     return 'All properties';
   };
 
@@ -355,9 +364,10 @@ export default function ListingPage() {
                   </div>
                 </div>
                 {/* Property Status RadioGroup */}
-                <div>
-                  <label className="block text-sm font-medium mb-1">Property Status</label>
-                  <RadioGroup value={propertyStatus} onValueChange={setPropertyStatus} className="flex gap-4">
+                {!purpose && (
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Property Status</label>
+                    <RadioGroup value={propertyStatus} onValueChange={setPropertyStatus} className="flex gap-4">
                     <RadioGroupItem value="any" id="status-any" />
                     <label htmlFor="status-any" className="text-sm">Any</label>
                     <RadioGroupItem value="for-sale" id="status-for-sale" />
@@ -366,18 +376,28 @@ export default function ListingPage() {
                     <label htmlFor="status-for-rent" className="text-sm">For Rent</label>
                     <RadioGroupItem value="sold" id="status-sold" />
                     <label htmlFor="status-sold" className="text-sm">Sold</label>
-                  </RadioGroup>
-                </div>
+                    </RadioGroup>
+                  </div>
+                )}
               </div>
               <AlertDialogFooter>
                 <AlertDialogCancel>Close</AlertDialogCancel>
-                <Button variant="secondary" type="button" onClick={handleClearFilters}>Clear Filters</Button>
                 <AlertDialogAction asChild>
                   <Button type="button" onClick={handleApplyFilters}>Apply Filters</Button>
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+
+          {/* Clear Filters Button (outside dialog) */}
+          <Button
+            className="h-12 px-6 text-base text-gray-600 border-gray-400 hover:text-blue-800 font-semibold border"
+            variant="outline"
+            type="button"
+            onClick={handleClearFilters}
+          >
+            Clear Filters
+          </Button>
         </div>
       </div>
       <div className="flex flex-col md:flex-row gap-6 max-w-[1600px] mx-auto px-4 py-8">
@@ -394,12 +414,12 @@ export default function ListingPage() {
             return !loading ? (
               <StaticMap
                 houses={filtered.map((house) => ({
-                  id: house._id,
-                  title: house.address.streetAddress,
-                  images: house.photos,
+                  id: house.id,
+                  title: house.streetAddress,
+                  images: house.pictures?.map(p => p.url) || ['/house.jpg'],
                   address: {
-                    city: house.address.city,
-                    state: house.address.state,
+                    city: house.city,
+                    state: house.state,
                   },
                   location: {
                     lat: house.latitude,
@@ -435,13 +455,14 @@ export default function ListingPage() {
             ) : (
               // Show actual house cards when loaded
               filtered.map((house) => (
-                <Link key={house._id} href={`/houses/${house._id}`} className="block group">
+                <Link key={house.id} href={`/houses/${house.id}`} className="block group">
                   <Card className="min-w-[300px] !pt-0 pb-0 gap-0 rounded-lg shadow-sm border-0 overflow-hidden bg-white h-full flex flex-col hover:scale-101 transition-all duration-300 group-hover:shadow-md">
                     {/* Image Section */}
                     <div className="relative">
                       <img
-                        src={house.photos[0]}
-                        alt={house.address.streetAddress}
+                        key={house.pictures?.[0]?.url || house.id}
+                        src={house.pictures?.[0]?.url || '/house.jpg'}
+                        alt={house.streetAddress}
                         className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-300"
                         onError={(e) => (e.currentTarget.src = "/house.jpg")}
                       />
@@ -468,10 +489,10 @@ export default function ListingPage() {
                       {/* Address (2 lines) */}
                       <div className="mb-1.5">
                         <div className="text-sm font-bold text-gray-900 group-hover:text-blue-700 transition-colors">
-                          {house.address.streetAddress}
+                          {house.streetAddress}
                         </div>
                         <div className="text-xs text-gray-700">
-                          {house.address.city}, {house.address.state} {house.address.zipcode}
+                          {house.city}, {house.state} {house.zipcode}
                         </div>
                       </div>
                       {/* Key Features Grid */}
@@ -496,7 +517,7 @@ export default function ListingPage() {
                       <div className="flex items-center justify-between mb-2 text-xs text-gray-600">
                         <div className="flex items-center gap-1">
                           <MapPin className="w-2.5 h-2.5 text-red-500" />
-                          <span className="truncate">{house.address.city}, {house.address.state}</span>
+                          <span className="truncate">{house.city}, {house.state}</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <Calendar className="w-2.5 h-2.5 text-gray-400" />
@@ -511,7 +532,7 @@ export default function ListingPage() {
                         <Eye className="w-2.5 h-2.5 mr-1" />
                         {house.homeStatus === 'RECENTLY_SOLD'
                           ? 'Sold'
-                          : house.homeStatus === 'For Rent'
+                          : house.homeStatus === 'FOR_RENT'
                             ? 'Rent this house'
                             : 'Buy this house'}
                       </Button>

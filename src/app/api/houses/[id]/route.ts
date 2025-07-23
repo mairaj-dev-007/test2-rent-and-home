@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 
 export async function GET(
@@ -40,6 +42,35 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Get the current user session
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    // Check if house exists and user owns it
+    const existingHouse = await prisma.house.findUnique({
+      where: { id: params.id }
+    })
+
+    if (!existingHouse) {
+      return NextResponse.json(
+        { error: 'House not found' },
+        { status: 404 }
+      )
+    }
+
+    if (existingHouse.ownerId !== session.user.id) {
+      return NextResponse.json(
+        { error: 'Forbidden - You can only edit your own houses' },
+        { status: 403 }
+      )
+    }
+
     const body = await request.json()
     
     const house = await prisma.house.update({
@@ -47,15 +78,13 @@ export async function PUT(
         id: params.id
       },
       data: {
-        mongoId: body._id || body.mongoId,
-        zpid: body.zpid,
-        streetAddress: body.address?.streetAddress || body.streetAddress,
-        city: body.address?.city || body.city,
-        state: body.address?.state || body.state,
-        zipcode: body.address?.zipcode || body.zipcode,
-        neighborhood: body.address?.neighborhood || body.neighborhood,
-        community: body.address?.community || body.community,
-        subdivision: body.address?.subdivision || body.subdivision,
+        streetAddress: body.streetAddress,
+        city: body.city,
+        state: body.state,
+        zipcode: body.zipcode,
+        neighborhood: body.neighborhood,
+        community: body.community,
+        subdivision: body.subdivision,
         bedrooms: body.bedrooms,
         bathrooms: body.bathrooms,
         price: body.price,
@@ -68,9 +97,6 @@ export async function PUT(
         currency: body.currency,
         homeType: body.homeType,
         datePostedString: body.datePostedString,
-        daysOnZillow: body.daysOnZillow,
-        url: body.url,
-        version: body.__v || body.version,
       }
     })
 
@@ -90,6 +116,35 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Get the current user session
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    // Check if house exists and user owns it
+    const existingHouse = await prisma.house.findUnique({
+      where: { id: params.id }
+    })
+
+    if (!existingHouse) {
+      return NextResponse.json(
+        { error: 'House not found' },
+        { status: 404 }
+      )
+    }
+
+    if (existingHouse.ownerId !== session.user.id) {
+      return NextResponse.json(
+        { error: 'Forbidden - You can only delete your own houses' },
+        { status: 403 }
+      )
+    }
+
     await prisma.house.delete({
       where: {
         id: params.id

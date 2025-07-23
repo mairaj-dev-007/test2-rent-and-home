@@ -15,18 +15,16 @@ import { BedDouble, Bath, Ruler, MapPin, Calendar, Eye } from "lucide-react";
 
 // Define the type for a house listing
 interface House {
-  _id: string;
+  id: string;
   zpid?: number;
-  address: {
-    streetAddress: string;
-    city: string;
-    state: string;
-    zipcode: string;
-    neighborhood?: string | null;
-    community?: string | null;
-    subdivision?: string | null;
-  };
-  photos: string[];
+  streetAddress: string;
+  city: string;
+  state: string;
+  zipcode: string;
+  neighborhood?: string | null;
+  community?: string | null;
+  subdivision?: string | null;
+  pictures?: { url: string }[];
   bedrooms: number;
   bathrooms: number;
   price: number;
@@ -43,11 +41,11 @@ interface House {
   url: string;
   createdAt: string;
   updatedAt: string;
-  __v?: number;
+  version?: number;
 }
 
-function formatAddress(address: House["address"]): string {
-  return `${address.streetAddress}, ${address.city}, ${address.state}, ${address.zipcode}`;
+function formatAddress(house: House): string {
+  return `${house.streetAddress}, ${house.city}, ${house.state}, ${house.zipcode}`;
 }
 
 // Carousel skeleton card for homepage
@@ -103,46 +101,27 @@ function CarouselHouseSkeleton() {
 }
 
 export default function Home() {
-  const [houses, setHouses] = useState<House[]>([]);
+  const [carouselHouses, setCarouselHouses] = useState<House[]>([]);
 
   useEffect(() => {
-    fetch("/api/homes?page=1&limit=15")
-      .then((res) => res.json())
-      .then((apiData) => {
-        // Normalize API data to House[]
-        const listings = (apiData.data || []).map((item: any) => ({
-          _id: item._id || item.zpid || item.id,
-          zpid: item.zpid,
-          address: {
-            streetAddress: item.address?.streetAddress || "",
-            city: item.address?.city || "",
-            state: item.address?.state || "",
-            zipcode: item.address?.zipcode || "",
-            neighborhood: item.address?.neighborhood || null,
-            community: item.address?.community || null,
-            subdivision: item.address?.subdivision || null,
-          },
-          photos: item.photos || [],
-          bedrooms: item.bedrooms || 0,
-          bathrooms: item.bathrooms || 0,
-          price: item.price || 0,
-          yearBuilt: item.yearBuilt || 0,
-          longitude: item.longitude || 0,
-          latitude: item.latitude || 0,
-          homeStatus: item.homeStatus || "",
-          description: item.description || "",
-          livingArea: item.livingArea || 0,
-          currency: item.currency || "USD",
-          homeType: item.homeType || "",
-          datePostedString: item.datePostedString || item.createdAt || new Date().toISOString(),
-          daysOnZillow: item.daysOnZillow,
-          url: item.url || "",
-          createdAt: item.createdAt || new Date().toISOString(),
-          updatedAt: item.updatedAt || new Date().toISOString(),
-          __v: item.__v,
-        }));
-        setHouses(listings);
-      });
+    async function fetchHouses() {
+      const [rentRes, buyRes, soldRes] = await Promise.all([
+        fetch("/api/houses?status=FOR_RENT&limit=5"),
+        fetch("/api/houses?status=FOR_SALE&limit=3"),
+        fetch("/api/houses?status=RECENTLY_SOLD&limit=2"),
+      ]);
+      const [rentData, buyData, soldData] = await Promise.all([
+        rentRes.json(),
+        buyRes.json(),
+        soldRes.json(),
+      ]);
+      setCarouselHouses([
+        ...(rentData.data || []),
+        ...(buyData.data || []),
+        ...(soldData.data || []),
+      ]);
+    }
+    fetchHouses();
   }, []);
 
   return (
@@ -152,7 +131,7 @@ export default function Home() {
         <h3 className="text-2xl font-bold mb-6 ml-4">Homes for you</h3>
         <Carousel className="w-full" opts={{ loop: true, align: "start", slidesToScroll: 1 }}>
           <CarouselContent className="-ml-4 py-3 bg-transparent">
-            {houses.length === 0
+            {carouselHouses.length === 0
               ? Array.from({ length: 4 }).map((_, i) => (
                   <CarouselItem
                     key={i}
@@ -161,19 +140,19 @@ export default function Home() {
                     <CarouselHouseSkeleton />
                   </CarouselItem>
                 ))
-              : houses.map((house) => (
+              : carouselHouses.map((house) => (
                   <CarouselItem
-                    key={house._id}
+                    key={house.id}
                     className="pl-4 basis-80 md:basis-1/2 lg:basis-1/3 xl:basis-1/4"
                   >
                     <Card className="min-w-[280px] !pt-0 pb-0 gap-0 rounded-lg shadow-sm border-0 overflow-hidden bg-white h-full flex flex-col hover:scale-101 transition-all duration-300 group-hover:shadow-md">
                       {/* Image Section */}
                       <div className="relative">
                         <img
-                          src={house.photos[0]}
-                          alt={house.address.streetAddress}
+                          src={house.pictures?.[0]?.url || "/house.jpg"}
+                          alt={house.streetAddress}
                           className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-300"
-                          onError={(e) => (e.currentTarget.src = "/hero-section-image.jpg")}
+                          onError={(e) => (e.currentTarget.src = "/house.jpg")}
                         />
                         {/* Status Badge */}
                         <div className="absolute top-1.5 left-1.5">
@@ -198,10 +177,10 @@ export default function Home() {
                         {/* Address (2 lines) */}
                         <div className="mb-1.5">
                           <div className="text-sm font-bold text-gray-900 group-hover:text-blue-700 transition-colors">
-                            {house.address.streetAddress}
+                            {house.streetAddress}
                           </div>
                           <div className="text-xs text-gray-700">
-                            {house.address.city}, {house.address.state} {house.address.zipcode}
+                            {house.city}, {house.state} {house.zipcode}
                           </div>
                         </div>
                         {/* Key Features Grid */}
@@ -226,7 +205,7 @@ export default function Home() {
                         <div className="flex items-center justify-between mb-2 text-xs text-gray-600">
                           <div className="flex items-center gap-1">
                             <MapPin className="w-2.5 h-2.5 text-red-500" />
-                            <span className="truncate">{house.address.city}, {house.address.state}</span>
+                            <span className="truncate">{house.city}, {house.state}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <Calendar className="w-2.5 h-2.5 text-gray-400" />
@@ -240,7 +219,7 @@ export default function Home() {
                               For now, removing the map as features is not part of the House interface. */}
                         </div>
                         {/* Action Button */}
-                        <Link href={house.homeStatus === 'RECENTLY_SOLD' ? '#' : `/houses/${house._id}`} className="block mt-1">
+                        <Link href={house.homeStatus === 'RECENTLY_SOLD' ? '#' : `/houses/${house.id}`} className="block mt-1">
                           <button
                             className={`w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-2.5 rounded-md shadow-sm hover:shadow-md transition-all duration-300 group-hover:scale-101 text-xs flex items-center justify-center ${house.homeStatus === 'RECENTLY_SOLD' ? 'opacity-60 cursor-not-allowed' : ''}`}
                             disabled={house.homeStatus === 'RECENTLY_SOLD'}
@@ -248,7 +227,7 @@ export default function Home() {
                             <Eye className="w-2.5 h-2.5 mr-1" />
                             {house.homeStatus === 'RECENTLY_SOLD'
                               ? 'Sold'
-                              : house.homeStatus === 'For Rent'
+                              : house.homeStatus === 'FOR_RENT'
                                 ? 'Rent this house'
                                 : 'Buy this house'}
                           </button>
@@ -269,7 +248,7 @@ export default function Home() {
           <img src="/buy-home.webp" alt="Buy a home" className="w-full h-auto object-contain mb-4" />
           <h3 className="text-3xl font-bold mb-2">Buy a home</h3>
           <p className="text-gray-500 mb-6">Find your place with an immersive photo experience and the most listings, including things you won't find anywhere else.</p>
-          <Link href="/houses" passHref>
+          <Link href="/houses?purpose=buy" passHref>
             <span className="inline-block border border-blue-500 text-blue-600 font-semibold rounded-lg px-6 py-2 hover:bg-blue-50 transition cursor-pointer">Browse homes</span>
           </Link>
         </div>
@@ -278,7 +257,7 @@ export default function Home() {
           <img src="/sell-home.webp" alt="Sell a home" className="w-full h-auto object-contain mb-4" />
           <h3 className="text-3xl font-bold mb-2">Sell a home</h3>
           <p className="text-gray-500 mb-6">No matter what path you take to sell your home, we can help you navigate a successful sale.</p>
-          <Link href="#" passHref>
+          <Link href="/sell" passHref>
             <span className="inline-block border border-blue-500 text-blue-600 font-semibold rounded-lg px-6 py-2 hover:bg-blue-50 transition cursor-pointer">See your options</span>
           </Link>
         </div>
@@ -287,7 +266,7 @@ export default function Home() {
           <img src="/rent-home.webp" alt="Rent a home" className="w-full h-auto object-contain mb-4" />
           <h3 className="text-3xl font-bold mb-2">Rent a home</h3>
           <p className="text-gray-500 mb-6">We're creating a seamless online experience – from shopping on the largest rental network to applying, to paying rent.</p>
-          <Link href="/houses" passHref>
+          <Link href="/houses?purpose=rent" passHref>
             <span className="inline-block border border-blue-500 text-blue-600 font-semibold rounded-lg px-6 py-2 hover:bg-blue-50 transition cursor-pointer">Find rentals</span>
           </Link>
         </div>
