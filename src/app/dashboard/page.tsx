@@ -450,7 +450,14 @@ export default function DashboardPage() {
           {/* Edit Dialog */}
           <Dialog open={editingHouse?.id === row.original.id} onOpenChange={open => open ? setEditingHouse(row.original) : setEditingHouse(null)}>
             <DialogTrigger asChild>
-              <Button size="icon" variant="ghost" aria-label="Edit">
+              <Button 
+                size="icon" 
+                variant="ghost" 
+                aria-label="Edit"
+                disabled={row.original.homeStatus === 'SOLD' || row.original.homeStatus === 'RECENTLY_SOLD'}
+                className={row.original.homeStatus === 'SOLD' || row.original.homeStatus === 'RECENTLY_SOLD' ? 'opacity-50 cursor-not-allowed' : ''}
+                title={row.original.homeStatus === 'SOLD' || row.original.homeStatus === 'RECENTLY_SOLD' ? 'Cannot edit sold properties' : 'Edit property'}
+              >
                 <Pencil className="w-4 h-4" />
               </Button>
             </DialogTrigger>

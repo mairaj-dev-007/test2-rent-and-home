@@ -228,9 +228,6 @@ export default function ListingDetailPage() {
       <div className="flex flex-row gap-8 mb-12">
         <div className="w-full max-w-4xl xl:max-w-4xl 2xl:max-w-none grow">
           <div className="relative">
-            <div className="flex items-center mb-4 px-2">
-              <div className="h-8 w-40 bg-gray-200 rounded" />
-            </div>
             <div className="relative">
               <div className="flex">
                 {Array.from({ length: 3 }).map((_, i) => (

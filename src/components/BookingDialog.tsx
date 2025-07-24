@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { DateTimePicker } from '@/components/ui/date-time-picker';
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
@@ -21,9 +21,16 @@ export default function BookingDialog({ trigger }: { trigger?: React.ReactNode }
   const { data: session } = useSession();
   const [open, setOpen] = useState(false);
   const [date, setDate] = useState<Date | undefined>(undefined);
-  const [name, setName] = useState(session?.user?.name || "");
+  const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Update name when session becomes available
+  useEffect(() => {
+    if (session?.user?.name && !name) {
+      setName(session.user.name);
+    }
+  }, [session?.user?.name, name]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,7 +68,7 @@ export default function BookingDialog({ trigger }: { trigger?: React.ReactNode }
           </div>
           <div>
             <Label className="mb-1 block">Email</Label>
-            <Input value={session?.user?.email || ""} disabled className="blur-[1px] bg-gray-50 text-gray-700 select-none" />
+            <Input value={session?.user?.email || ""} disabled className="blur-[0.5px] bg-gray-50 text-gray-900 select-none" />
           </div>
           <div>
             <Label className="mb-1 block">Full Name</Label>
@@ -71,8 +78,30 @@ export default function BookingDialog({ trigger }: { trigger?: React.ReactNode }
             <Label className="mb-1 block">Phone Number</Label>
             <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+1 (555) 123-4567" required />
           </div>
+          
+          {/* Booking Summary */}
+          {(date || name || phone) && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
+              <h4 className="text-sm font-semibold text-blue-900">Booking Summary</h4>
+              <div className="text-sm text-blue-800 space-y-1">
+                {date && (
+                  <p><span className="font-medium">Date & Time:</span> {date.toLocaleString()}</p>
+                )}
+                {name && (
+                  <p><span className="font-medium">Name:</span> {name}</p>
+                )}
+                {phone && (
+                  <p><span className="font-medium">Phone:</span> {phone}</p>
+                )}
+                {session?.user?.email && (
+                  <p><span className="font-medium">Email:</span> {session.user.email}</p>
+                )}
+              </div>
+            </div>
+          )}
+          
           <DialogFooter className="flex flex-row gap-2">
-            <Button type="submit" onClick={handleSubmit} className="w-1/2" disabled={isSubmitting}>{isSubmitting ? "Booking..." : "Book Tour"}</Button>
+            <Button type="submit" onClick={handleSubmit} className="w-1/2 bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 hover:from-blue-600 hover:via-blue-700 hover:to-blue-800 text-white" disabled={isSubmitting}>{isSubmitting ? "Booking..." : "Book Tour"}</Button>
             <DialogClose asChild>
               <Button type="button" variant="outline" className="w-1/2">Cancel</Button>
             </DialogClose>

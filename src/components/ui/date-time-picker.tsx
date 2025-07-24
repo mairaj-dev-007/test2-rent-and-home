@@ -772,7 +772,8 @@ const DateTimePicker = React.forwardRef<Partial<DateTimePickerRef>, DateTimePick
     }
 
     return (
-      <Popover>
+      <div className='max-h-[15vh]'>
+        <Popover>
         <PopoverTrigger asChild disabled={disabled} className="!z-1001">
           <Button
             variant="outline"
@@ -835,6 +836,7 @@ const DateTimePicker = React.forwardRef<Partial<DateTimePickerRef>, DateTimePick
           )}
         </PopoverContent>
       </Popover>
+      </div>
     );
   },
 );
