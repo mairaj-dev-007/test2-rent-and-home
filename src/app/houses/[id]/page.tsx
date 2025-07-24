@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/carousel";
 import { useSession } from "next-auth/react";
 import toast from 'react-hot-toast';
+import BookingDialog from "@/components/BookingDialog";
 
 const StaticMap = dynamic(() => import("@/components/StaticMap"), { ssr: false });
 
@@ -306,8 +307,7 @@ export default function ListingDetailPage() {
   const carouselContainerClass = "w-full max-w-4xl xl:max-w-4xl 2xl:max-w-none";
 
   const handleScheduleTour = () => {
-    // TODO: Implement tour scheduling logic
-    alert('Tour scheduling feature coming soon!');
+    // This function is no longer needed as we're using the BookingDrawer component
   };
 
   return (
@@ -508,24 +508,29 @@ export default function ListingDetailPage() {
 
       {/* Main Action Button */}
       <div className="mb-8">
-        <Button
-          className={`w-full font-semibold py-4 text-lg ${
-            session?.user?.id === house.ownerId 
-              ? 'bg-gray-400 cursor-not-allowed' 
-              : isSold 
-                ? 'bg-blue-600 hover:bg-blue-700 opacity-60 cursor-not-allowed' 
-                : 'bg-blue-600 hover:bg-blue-700'
-          } text-white`}
-          disabled={session?.user?.id === house.ownerId || isSold}
-          onClick={handleScheduleTour}
-        >
-          {session?.user?.id === house.ownerId 
-            ? 'You posted this property' 
-            : isSold 
-              ? 'Sold' 
-              : 'Schedule a Tour'
-          }
-        </Button>
+        {session?.user?.id === house.ownerId ? (
+          <Button
+            className="w-full font-semibold py-4 text-lg bg-gray-400 cursor-not-allowed text-white"
+            disabled
+          >
+            You posted this property
+          </Button>
+        ) : isSold ? (
+          <Button
+            className="w-full font-semibold py-4 text-lg bg-blue-600 hover:bg-blue-700 opacity-60 cursor-not-allowed text-white"
+            disabled
+          >
+            Sold
+          </Button>
+        ) : (
+          <BookingDialog
+            trigger={
+              <Button className="w-full font-semibold py-4 text-lg bg-blue-600 hover:bg-blue-700 text-white">
+                Schedule a Tour
+              </Button>
+            }
+          />
+        )}
       </div>
       {/* Similar homes carousel section */}
       {similarHouses.length > 0 && (
