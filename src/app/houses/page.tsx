@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Slider } from "@/components/ui/slider";
+import toast from 'react-hot-toast';
 
 const StaticMap = dynamic(() => import("@/components/StaticMap"), { ssr: false });
 
@@ -123,13 +125,28 @@ function HouseSkeleton() {
 }
 
 export default function ListingPage() {
+  const { data: session, status } = useSession();
   const [houses, setHouses] = useState<House[]>([]);
   const [search, setSearch] = useState("");
   const [filtered, setFiltered] = useState<House[]>([]);
   const [loading, setLoading] = useState(true);
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [loadingFavorites, setLoadingFavorites] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
   const purpose = searchParams.get('purpose');
+
+  // Redirect to home page if not authenticated
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/');
+    }
+  }, [status, router]);
+
+  // Don't render anything if not authenticated
+  if (status === 'unauthenticated') {
+    return null;
+  }
 
   // Filter dialog state
   const [price, setPrice] = useState<number[]>([0, 2000000]);
@@ -139,6 +156,22 @@ export default function ListingPage() {
   const [homeTypes, setHomeTypes] = useState<string[]>([]);
   const [propertyStatus, setPropertyStatus] = useState<string>("any");
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
+
+  // Fetch user favorites
+  useEffect(() => {
+    if (session?.user?.id) {
+      fetch('/api/favorites')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.data) {
+            setFavorites(data.data.map((house: House) => house.id));
+          }
+        })
+        .catch((error) => {
+          console.error('Error fetching favorites:', error);
+        });
+    }
+  }, [session]);
 
   useEffect(() => {
     setLoading(true);
@@ -231,6 +264,10 @@ export default function ListingPage() {
   function handleApplyFilters() {
     setFiltered(filterHouses(houses));
     setFilterDialogOpen(false);
+    toast.success('Filters applied successfully!', {
+      icon: '✅',
+      duration: 2000,
+    });
   }
 
   // Handle Clear Filters
@@ -251,12 +288,66 @@ export default function ListingPage() {
     } else {
       router.push('/houses');
     }
+    toast.success('Filters cleared!', {
+      icon: '🧹',
+      duration: 2000,
+    });
   }
 
   const getPageTitle = () => {
     if (purpose === 'rent') return 'Rent properties';
     if (purpose === 'buy') return 'Buy properties';
     return 'All properties';
+  };
+
+  const toggleFavorite = async (houseId: string) => {
+    if (!session?.user?.id) {
+      // Redirect to sign in or show sign in modal
+      toast.error('Please sign in to save favorites', {
+        icon: '🔒',
+        duration: 4000,
+      });
+      return;
+    }
+
+    setLoadingFavorites(true);
+    const isFavorited = favorites.includes(houseId);
+
+    try {
+      if (isFavorited) {
+        // Remove from favorites
+        await fetch(`/api/favorites?houseId=${houseId}`, {
+          method: 'DELETE',
+        });
+        setFavorites(prev => prev.filter(id => id !== houseId));
+        toast.success('Removed from favorites!', {
+          icon: '💔',
+          duration: 3000,
+        });
+      } else {
+        // Add to favorites
+        await fetch('/api/favorites', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ houseId }),
+        });
+        setFavorites(prev => [...prev, houseId]);
+        toast.success('Added to favorites!', {
+          icon: '❤️',
+          duration: 3000,
+        });
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      toast.error('Failed to update favorites. Please try again.', {
+        icon: '❌',
+        duration: 4000,
+      });
+    } finally {
+      setLoadingFavorites(false);
+    }
   };
 
   return (
@@ -455,7 +546,7 @@ export default function ListingPage() {
             ) : (
               // Show actual house cards when loaded
               filtered.map((house) => (
-                <Link key={house.id} href={`/houses/${house.id}`} className="block group">
+                <div key={house.id} className="group relative">
                   <Card className="min-w-[300px] !pt-0 pb-0 gap-0 rounded-lg shadow-sm border-0 overflow-hidden bg-white h-full flex flex-col hover:scale-101 transition-all duration-300 group-hover:shadow-md">
                     {/* Image Section */}
                     <div className="relative">
@@ -478,6 +569,22 @@ export default function ListingPage() {
                           {house.homeType}
                         </span>
                       </div>
+                      {/* Heart Button - Show on hover */}
+                      {session?.user?.id && (
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            toggleFavorite(house.id);
+                          }}
+                          disabled={loadingFavorites}
+                          className="absolute bottom-1.5 left-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-white rounded-full p-1.5 shadow-sm hover:shadow-md"
+                        >
+                          <Heart 
+                            className={`w-4 h-4 ${favorites.includes(house.id) ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} 
+                          />
+                        </button>
+                      )}
                     </div>
                     {/* Content Section */}
                     <CardContent className="p-3 pb-3">
@@ -526,6 +633,7 @@ export default function ListingPage() {
                       </div>
                       {/* Action Button */}
                       <Button
+                        onClick={() => router.push(`/houses/${house.id}`)}
                         className={`w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-1.5 rounded-md shadow-sm hover:shadow-md transition-all duration-300 group-hover:scale-101 text-xs flex items-center justify-center ${house.homeStatus === 'RECENTLY_SOLD' ? 'opacity-60 cursor-not-allowed' : ''}`}
                         disabled={house.homeStatus === 'RECENTLY_SOLD'}
                       >
@@ -538,7 +646,7 @@ export default function ListingPage() {
                       </Button>
                     </CardContent>
                   </Card>
-                </Link>
+                </div>
               ))
             )}
             {!loading && filtered.length === 0 && (

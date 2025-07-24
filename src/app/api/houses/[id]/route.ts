@@ -3,15 +3,11 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
+    const { id } = await params;
     const house = await prisma.house.findUnique({
-      where: {
-        id: params.id
-      },
+      where: { id },
       include: {
         pictures: {
           orderBy: { order: 'asc' }
@@ -42,6 +38,8 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    const { id } = await params;
+    
     // Get the current user session
     const session = await getServerSession(authOptions)
     
@@ -54,7 +52,7 @@ export async function PUT(
 
     // Check if house exists and user owns it
     const existingHouse = await prisma.house.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!existingHouse) {
@@ -75,7 +73,7 @@ export async function PUT(
     
     const house = await prisma.house.update({
       where: {
-        id: params.id
+        id
       },
       data: {
         streetAddress: body.streetAddress,
@@ -116,6 +114,8 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const { id } = await params;
+    
     // Get the current user session
     const session = await getServerSession(authOptions)
     
@@ -128,7 +128,7 @@ export async function DELETE(
 
     // Check if house exists and user owns it
     const existingHouse = await prisma.house.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!existingHouse) {
@@ -147,7 +147,7 @@ export async function DELETE(
 
     await prisma.house.delete({
       where: {
-        id: params.id
+        id
       }
     })
 

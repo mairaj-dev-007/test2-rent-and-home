@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { X, ArrowLeft, BedDouble, Bath, Ruler, Calendar, Phone, Mail, Building2, Star, CheckCircle, MapPin, Home, Tag, Hash, Users, Layers, Globe, Fingerprint, Link2, Eye } from "lucide-react";
+import { X, ArrowLeft, BedDouble, Bath, Ruler, Calendar, Phone, Mail, Building2, Star, CheckCircle, MapPin, Home, Tag, Hash, Users, Layers, Globe, Fingerprint, Link2, Eye, Heart } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
@@ -23,19 +23,21 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
+import { useSession } from "next-auth/react";
+import toast from 'react-hot-toast';
 
 const StaticMap = dynamic(() => import("@/components/StaticMap"), { ssr: false });
 
 interface House {
   id: string;
   zpid?: number;
-  streetAddress: string;
-  city: string;
-  state: string;
-  zipcode: string;
-  neighborhood?: string | null;
-  community?: string | null;
-  subdivision?: string | null;
+    streetAddress: string;
+    city: string;
+    state: string;
+    zipcode: string;
+    neighborhood?: string | null;
+    community?: string | null;
+    subdivision?: string | null;
   pictures?: { url: string }[];
   bedrooms: number;
   bathrooms: number;
@@ -54,6 +56,7 @@ interface House {
   createdAt: string;
   updatedAt: string;
   __v?: number;
+  ownerId: string;
 }
 
 export default function ListingDetailPage() {
@@ -61,6 +64,21 @@ export default function ListingDetailPage() {
   const [house, setHouse] = useState<House | null>(null);
   const [loading, setLoading] = useState(true);
   const [similarHouses, setSimilarHouses] = useState<House[]>([]);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
+  // Redirect to home page if not authenticated
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/');
+    }
+  }, [status, router]);
+
+  // Don't render anything if not authenticated
+  if (status === 'unauthenticated') {
+    return null;
+  }
 
   useEffect(() => {
     setLoading(true);
@@ -84,6 +102,59 @@ export default function ListingDetailPage() {
         setSimilarHouses(apiData.data || []);
       });
   }, [house]);
+
+  // Check if house is in user's favorites
+  useEffect(() => {
+    if (!house || !session?.user?.id) return;
+    
+    fetch('/api/favorites')
+      .then((res) => res.json())
+      .then((data) => {
+        const isInFavorites = data.data?.some((favHouse: any) => favHouse.id === house.id);
+        setIsFavorite(isInFavorites);
+      })
+      .catch((error) => {
+        console.error('Error checking favorites:', error);
+      });
+  }, [house, session?.user?.id]);
+
+  const toggleFavorite = async () => {
+    if (!session?.user?.id || !house) return;
+
+    try {
+      if (isFavorite) {
+        // Remove from favorites
+        await fetch(`/api/favorites?houseId=${house.id}`, {
+          method: 'DELETE',
+        });
+        setIsFavorite(false);
+        toast.success('Removed from favorites!', {
+          icon: '💔',
+          duration: 3000,
+        });
+      } else {
+        // Add to favorites
+        await fetch('/api/favorites', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ houseId: house.id }),
+        });
+        setIsFavorite(true);
+        toast.success('Added to favorites!', {
+          icon: '❤️',
+          duration: 3000,
+        });
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      toast.error('Failed to update favorites. Please try again.', {
+        icon: '❌',
+        duration: 4000,
+      });
+    }
+  };
 
   if (loading) return (
     <div className="max-w-7xl mx-auto px-4 py-10 animate-pulse">
@@ -234,6 +305,11 @@ export default function ListingDetailPage() {
   // Responsive class for max-w-4xl but full width on larger screens
   const carouselContainerClass = "w-full max-w-4xl xl:max-w-4xl 2xl:max-w-none";
 
+  const handleScheduleTour = () => {
+    // TODO: Implement tour scheduling logic
+    alert('Tour scheduling feature coming soon!');
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-10">
       {/* Back to Listings */}
@@ -278,6 +354,25 @@ export default function ListingDetailPage() {
                   </div>
                 </AlertDialogContent>
               </AlertDialog>
+              
+              {/* Heart button for favorites */}
+              {session?.user?.id && (
+                <button
+                  onClick={toggleFavorite}
+                  disabled={session?.user?.id === house.ownerId}
+                  className={`absolute top-4 right-48 z-30 p-3 rounded-full shadow-lg border transition-all duration-200 ${
+                    session?.user?.id === house.ownerId
+                      ? 'bg-gray-300 text-gray-500 border-gray-300 cursor-not-allowed opacity-60'
+                      : isFavorite 
+                        ? 'bg-red-500 text-white border-red-500 hover:bg-red-600' 
+                        : 'bg-white/90 text-gray-600 border-gray-200 hover:bg-white hover:text-red-500'
+                  }`}
+                  title={session?.user?.id === house.ownerId ? "You can't favorite your own property" : isFavorite ? "Remove from favorites" : "Add to favorites"}
+                >
+                  <Heart className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`} />
+                </button>
+              )}
+              
               {/* Simple custom photo carousel */}
               <Carousel className="w-full h-[450px]" opts={{ loop: true, align: "start", slidesToScroll: 1 }}>
                 <CarouselContent>
@@ -414,10 +509,22 @@ export default function ListingDetailPage() {
       {/* Main Action Button */}
       <div className="mb-8">
         <Button
-          className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 text-lg ${isSold ? 'opacity-60 cursor-not-allowed' : ''}`}
-          disabled={isSold}
+          className={`w-full font-semibold py-4 text-lg ${
+            session?.user?.id === house.ownerId 
+              ? 'bg-gray-400 cursor-not-allowed' 
+              : isSold 
+                ? 'bg-blue-600 hover:bg-blue-700 opacity-60 cursor-not-allowed' 
+                : 'bg-blue-600 hover:bg-blue-700'
+          } text-white`}
+          disabled={session?.user?.id === house.ownerId || isSold}
+          onClick={handleScheduleTour}
         >
-          {isSold ? 'Sold' : 'Schedule a Tour'}
+          {session?.user?.id === house.ownerId 
+            ? 'You posted this property' 
+            : isSold 
+              ? 'Sold' 
+              : 'Schedule a Tour'
+          }
         </Button>
       </div>
       {/* Similar homes carousel section */}

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Button } from './ui/button'
 import { Heart, User, LogOut, Eye, EyeOff, Mail, Lock, ChevronDown, LayoutDashboard, Settings } from "lucide-react";
 import Link from 'next/link';
@@ -19,11 +19,12 @@ import {
 import { Input } from './ui/input';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "./ui/dropdown-menu"
 
+import toast, { Toaster } from 'react-hot-toast';
+
 const navLinks = [
   { label: "All Properties", href: "/houses" },
   { label: "Buy", href: "/houses?purpose=buy" },
   { label: "Rent", href: "/houses?purpose=rent" },
-  { label: "Sell", href: "/sell" },
 ];
 
 const Navbar = () => {
@@ -35,20 +36,39 @@ const Navbar = () => {
   const [name, setName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [mounted, setMounted] = useState(false);
+
+  // Prevent hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleSignOut = () => {
-    signOut({ callbackUrl: '/' });
+    const loadingToast = toast.loading('Signing you out...', {
+      icon: '⏳',
+    });
+    
+    // Small delay to show the loading state
+    setTimeout(() => {
+      toast.dismiss(loadingToast);
+      toast.success('Successfully signed out!', {
+        icon: '👋',
+        duration: 2000,
+      });
+      signOut({ callbackUrl: '/' });
+    }, 500);
   };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError("");
-    setSuccess("");
+    
     if (isSignUp) {
-      // Sign up logic
+      // Show loading toast for sign up
+      const loadingToast = toast.loading('Creating your account...', {
+        icon: '⏳',
+      });
+      
       try {
         const response = await fetch("/api/auth/register", {
           method: "POST",
@@ -56,19 +76,72 @@ const Navbar = () => {
           body: JSON.stringify({ name, email, password }),
         });
         const data = await response.json();
+        
+        // Dismiss loading toast
+        toast.dismiss(loadingToast);
+        
         if (!response.ok) {
-          setError(data.error || "Registration failed");
+          toast.error(data.error || "Registration failed", {
+            icon: '❌',
+            duration: 4000,
+          });
         } else {
-          setSuccess("Registration successful! You can now sign in.");
-          setIsSignUp(false);
+          // Auto sign in after successful registration
+          const signInToast = toast.loading('Signing you in automatically...', {
+            icon: '⏳',
+          });
+          
+          try {
+            const { signIn } = await import('next-auth/react');
+            const result = await signIn("credentials", {
+              email,
+              password,
+              redirect: false,
+            });
+            
+            toast.dismiss(signInToast);
+            
+            if (result?.error) {
+              toast.error("Account created but sign in failed. Please try signing in manually.", {
+                icon: '⚠️',
+                duration: 4000,
+              });
+              setIsSignUp(false);
+            } else {
+              toast.success("Account created and signed in successfully!", {
+                icon: '🎉',
+                duration: 4000,
+              });
+              setOpen(false);
+              setEmail("");
+              setPassword("");
+              setName("");
+            }
+          } catch (signInError) {
+            toast.dismiss(signInToast);
+            toast.error("Account created but sign in failed. Please try signing in manually.", {
+              icon: '⚠️',
+              duration: 4000,
+            });
+            setIsSignUp(false);
+          }
         }
       } catch {
-        setError("An error occurred. Please try again.");
+        // Dismiss loading toast
+        toast.dismiss(loadingToast);
+        toast.error("An error occurred. Please try again.", {
+          icon: '❌',
+          duration: 4000,
+        });
       } finally {
         setIsLoading(false);
       }
     } else {
-      // Sign in logic
+      // Show loading toast for sign in
+      const loadingToast = toast.loading('Signing you in...', {
+        icon: '⏳',
+      });
+      
       try {
         const { signIn } = await import('next-auth/react');
         const result = await signIn("credentials", {
@@ -76,16 +149,32 @@ const Navbar = () => {
           password,
           redirect: false,
         });
+        
+        // Dismiss loading toast
+        toast.dismiss(loadingToast);
+        
         if (result?.error) {
-          setError("Invalid email or password");
+          toast.error("Invalid email or password", {
+            icon: '❌',
+            duration: 4000,
+          });
         } else {
+          toast.success("Successfully signed in!", {
+            icon: '✅',
+            duration: 3000,
+          });
           setOpen(false);
           setEmail("");
           setPassword("");
           setName("");
         }
       } catch {
-        setError("An error occurred. Please try again.");
+        // Dismiss loading toast
+        toast.dismiss(loadingToast);
+        toast.error("An error occurred. Please try again.", {
+          icon: '❌',
+          duration: 4000,
+        });
       } finally {
         setIsLoading(false);
       }
@@ -103,21 +192,21 @@ const Navbar = () => {
 
           {/* Navigation Links */}
           <div className="hidden md:flex items-center gap-6">
-                {navLinks.map((item) => (
+            {navLinks.map((item) => (
               <Link
                 key={item.label}
                 href={item.href}
                 className="text-black font-medium px-2 py-2 rounded-md transition-colors hover:text-blue-600"
-                      >
-                        {item.label}
-                                    </Link>
-                                ))}
+              >
+                {item.label}
+              </Link>
+            ))}
           </div>
 
           {/* Right side buttons */}
           <div className="flex items-center gap-4">
             {/* Authentication */}
-            {status === 'loading' ? (
+            {!mounted || status === 'loading' ? (
               <div className="h-8 w-20 bg-gray-200 rounded animate-pulse" />
             ) : session ? (
               <DropdownMenu>
@@ -138,9 +227,9 @@ const Navbar = () => {
                         </span>
                         <span className="text-xs text-gray-500">
                           {session.user?.email}
-                        </span>
+            </span>
                       </div>
-                    </div>
+                            </div>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
@@ -188,16 +277,6 @@ const Navbar = () => {
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <form onSubmit={handleAuth} className="space-y-6 mt-2">
-                    {error && (
-                      <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm">
-                        {error}
-                      </div>
-                    )}
-                    {success && (
-                      <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md text-sm">
-                        {success}
-                            </div>
-                    )}
                     {isSignUp && (
                       <div>
                         <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
@@ -236,7 +315,7 @@ const Navbar = () => {
                           placeholder="Enter your email"
                         />
                       </div>
-                    </div>
+          </div>
                     <div>
                       <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
                         Password
@@ -258,7 +337,7 @@ const Navbar = () => {
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
                           className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                        >
+                      >
                           {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
                       </div>
@@ -285,8 +364,6 @@ const Navbar = () => {
                             className="text-blue-600 hover:text-blue-500 underline"
                             onClick={() => {
                               setIsSignUp(false);
-                              setError("");
-                              setSuccess("");
                             }}
                           >
                             Sign in
@@ -300,8 +377,6 @@ const Navbar = () => {
                             className="text-blue-600 hover:text-blue-500 underline"
                             onClick={() => {
                               setIsSignUp(true);
-                              setError("");
-                              setSuccess("");
                             }}
                           >
                             Sign up

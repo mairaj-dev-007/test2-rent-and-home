@@ -47,6 +47,7 @@ import {
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
 import { MoreHorizontal, Pencil, Trash2, Loader2, Plus, Home, BedDouble, Bath, Ruler, Calendar, UploadCloud, X, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import toast from 'react-hot-toast';
 
 interface House {
   id: string;
@@ -118,6 +119,9 @@ const initialForm: HouseForm = {
 
 };
 
+const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || '';
+const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || '';
+
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -188,25 +192,26 @@ export default function DashboardPage() {
   const handleAddHouse = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      // Prepare multipart form data
+      const formData = new FormData();
+      Object.entries(addForm).forEach(([key, value]) => {
+        formData.append(key, value ?? '');
+      });
+      // Add images
+      images.forEach((file) => {
+        formData.append('images', file);
+      });
+
       const response = await fetch('/api/houses', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...addForm,
-          price: parseFloat(addForm.price),
-          bedrooms: parseInt(addForm.bedrooms),
-          bathrooms: parseInt(addForm.bathrooms),
-          livingArea: parseInt(addForm.livingArea),
-          yearBuilt: parseInt(addForm.yearBuilt),
-          zpid: addForm.zpid ? parseInt(addForm.zpid) : null,
-          longitude: parseFloat(addForm.longitude),
-          latitude: parseFloat(addForm.latitude),
-        }),
+        body: formData,
       });
 
       if (response.ok) {
+        toast.success('House added successfully!', {
+          icon: '✅',
+          duration: 3000,
+        });
         setShowAddForm(false);
         setAddForm(initialForm);
         setImages([]);
@@ -214,11 +219,17 @@ export default function DashboardPage() {
         fetchUserHouses(); // Refresh the data
       } else {
         const error = await response.json();
-        alert(`Error adding house: ${error.error}`);
+        toast.error(`Error adding house: ${error.error}`, {
+          icon: '❌',
+          duration: 4000,
+        });
       }
     } catch (error) {
       console.error('Error adding house:', error);
-      alert('Failed to add house');
+      toast.error('Failed to add house. Please try again.', {
+        icon: '❌',
+        duration: 4000,
+      });
     }
   };
 
@@ -250,15 +261,25 @@ export default function DashboardPage() {
       });
 
       if (response.ok) {
+        toast.success('House updated successfully!', {
+          icon: '✅',
+          duration: 3000,
+        });
         setEditingHouse(null);
         fetchUserHouses(); // Refresh the data
       } else {
         const error = await response.json();
-        alert(`Error updating house: ${error.error}`);
+        toast.error(`Error updating house: ${error.error}`, {
+          icon: '❌',
+          duration: 4000,
+        });
       }
     } catch (error) {
       console.error('Error updating house:', error);
-      alert('Failed to update house');
+      toast.error('Failed to update house. Please try again.', {
+        icon: '❌',
+        duration: 4000,
+      });
     }
   };
 
@@ -269,15 +290,25 @@ export default function DashboardPage() {
       });
 
       if (response.ok) {
+        toast.success('House deleted successfully!', {
+          icon: '✅',
+          duration: 3000,
+        });
         setDeletingHouse(null);
         fetchUserHouses(); // Refresh the data
       } else {
         const error = await response.json();
-        alert(`Error deleting house: ${error.error}`);
+        toast.error(`Error deleting house: ${error.error}`, {
+          icon: '❌',
+          duration: 4000,
+        });
       }
     } catch (error) {
       console.error('Error deleting house:', error);
-      alert('Failed to delete house');
+      toast.error('Failed to delete house. Please try again.', {
+        icon: '❌',
+        duration: 4000,
+      });
     }
   };
 
@@ -582,6 +613,7 @@ export default function DashboardPage() {
 
   return (
     <div className="max-w-7xl mx-auto py-10 px-4">
+      {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-bold">Your Listings</h1>
         <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
@@ -689,6 +721,62 @@ export default function DashboardPage() {
               <div className="bg-blue-50/40 rounded-xl p-6">
                 <h2 className="text-xl font-bold mb-6 text-primary flex items-center gap-2"><Ruler className="w-6 h-6 text-primary" /> Description</h2>
                 <Textarea className="bg-transparent" name="description" value={addForm.description} onChange={handleInputChange} placeholder="Description" rows={4} required />
+              </div>
+              {/* Images */}
+              <div className="bg-blue-50/40 rounded-xl p-6">
+                <h2 className="text-xl font-bold mb-6 text-primary flex items-center gap-2"><UploadCloud className="w-6 h-6 text-primary" /> Images</h2>
+                
+                {/* Upload Area */}
+                <div className="relative">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageChange}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    id="image-upload"
+                  />
+                  <label 
+                    htmlFor="image-upload"
+                    className="block w-full min-h-[120px] border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 hover:bg-blue-50/50 transition-colors cursor-pointer"
+                  >
+                    <div className="flex flex-col items-center justify-center space-y-2">
+                      <UploadCloud className="w-8 h-8 text-gray-400" />
+                      <div className="text-sm text-gray-600">
+                        <span className="font-medium text-blue-600">Click to upload</span> or drag and drop
+                      </div>
+                      <p className="text-xs text-gray-500">PNG, JPG, GIF up to 10MB each</p>
+                    </div>
+                  </label>
+                </div>
+
+                {/* Image Previews */}
+                {imagePreviews.length > 0 && (
+                  <div className="mt-4">
+                    <h3 className="text-sm font-medium text-gray-700 mb-3">Selected Images ({imagePreviews.length})</h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                      {imagePreviews.map((src, idx) => (
+                        <div key={idx} className="relative group">
+                          <img 
+                            src={src} 
+                            alt={`Preview ${idx + 1}`} 
+                            className="w-full h-24 object-cover rounded-lg border border-gray-200"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeImage(idx)}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-lg hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                          <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 rounded-b-lg">
+                            Image {idx + 1}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
               <DialogFooter>
                 <DialogClose asChild>

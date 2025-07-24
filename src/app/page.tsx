@@ -12,6 +12,7 @@ import {
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { BedDouble, Bath, Ruler, MapPin, Calendar, Eye } from "lucide-react";
+import { useSession } from "next-auth/react";
 
 // Define the type for a house listing
 interface House {
@@ -102,8 +103,10 @@ function CarouselHouseSkeleton() {
 
 export default function Home() {
   const [carouselHouses, setCarouselHouses] = useState<House[]>([]);
+  const { data: session } = useSession();
 
   useEffect(() => {
+    
     async function fetchHouses() {
       const [rentRes, buyRes, soldRes] = await Promise.all([
         fetch("/api/houses?status=FOR_RENT&limit=5"),
@@ -122,7 +125,7 @@ export default function Home() {
       ]);
     }
     fetchHouses();
-  }, []);
+  }, [session]);
 
   return (
     <main>
@@ -131,7 +134,7 @@ export default function Home() {
         <h3 className="text-2xl font-bold mb-6 ml-4">Homes for you</h3>
         <Carousel className="w-full" opts={{ loop: true, align: "start", slidesToScroll: 1 }}>
           <CarouselContent className="-ml-4 py-3 bg-transparent">
-            {carouselHouses.length === 0
+            {!session || carouselHouses.length === 0
               ? Array.from({ length: 4 }).map((_, i) => (
                   <CarouselItem
                     key={i}
@@ -219,19 +222,27 @@ export default function Home() {
                               For now, removing the map as features is not part of the House interface. */}
                         </div>
                         {/* Action Button */}
-                        <Link href={house.homeStatus === 'RECENTLY_SOLD' ? '#' : `/houses/${house.id}`} className="block mt-1">
-                          <button
-                            className={`w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-2.5 rounded-md shadow-sm hover:shadow-md transition-all duration-300 group-hover:scale-101 text-xs flex items-center justify-center ${house.homeStatus === 'RECENTLY_SOLD' ? 'opacity-60 cursor-not-allowed' : ''}`}
-                            disabled={house.homeStatus === 'RECENTLY_SOLD'}
-                          >
-                            <Eye className="w-2.5 h-2.5 mr-1" />
-                            {house.homeStatus === 'RECENTLY_SOLD'
-                              ? 'Sold'
-                              : house.homeStatus === 'FOR_RENT'
-                                ? 'Rent this house'
-                                : 'Buy this house'}
-                          </button>
-                        </Link>
+                        <button
+                          onClick={() => {
+                            if (!session) {
+                              // Show a toast or alert that user needs to sign in
+                              alert('Please sign in to view property details');
+                              return;
+                            }
+                            if (house.homeStatus !== 'RECENTLY_SOLD') {
+                              window.location.href = `/houses/${house.id}`;
+                            }
+                          }}
+                          className={`w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-2.5 rounded-md shadow-sm hover:shadow-md transition-all duration-300 group-hover:scale-101 text-xs flex items-center justify-center ${house.homeStatus === 'RECENTLY_SOLD' ? 'opacity-60 cursor-not-allowed' : ''}`}
+                          disabled={house.homeStatus === 'RECENTLY_SOLD'}
+                        >
+                          <Eye className="w-2.5 h-2.5 mr-1" />
+                          {house.homeStatus === 'RECENTLY_SOLD'
+                            ? 'Sold'
+                            : house.homeStatus === 'FOR_RENT'
+                              ? 'Rent this house'
+                              : 'Buy this house'}
+                        </button>
                       </CardContent>
                     </Card>
                   </CarouselItem>
@@ -245,30 +256,90 @@ export default function Home() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16 mb-8 px-2 max-w-7xl mx-auto">
         {/* Buy a home */}
         <div className="bg-white rounded-2xl shadow-md flex flex-col gap-4 items-center p-8 pb-12 text-center border border-gray-100 hover:scale-105 transition-all duration-300">
-          <img src="/buy-home.webp" alt="Buy a home" className="w-full h-auto object-contain mb-4" />
+          <img 
+            src="/buy-home.webp" 
+            alt="Buy a home" 
+            className="w-full h-auto object-contain mb-4"
+            onError={(e) => {
+              console.error('Failed to load buy-home.webp, trying fallback');
+              e.currentTarget.src = '/house.jpg';
+            }}
+            onLoad={() => {
+              console.log('Successfully loaded buy-home.webp');
+            }}
+          />
           <h3 className="text-3xl font-bold mb-2">Buy a home</h3>
           <p className="text-gray-500 mb-6">Find your place with an immersive photo experience and the most listings, including things you won't find anywhere else.</p>
-          <Link href="/houses?purpose=buy" passHref>
-            <span className="inline-block border border-blue-500 text-blue-600 font-semibold rounded-lg px-6 py-2 hover:bg-blue-50 transition cursor-pointer">Browse homes</span>
-          </Link>
+          <button
+            onClick={() => {
+              if (!session) {
+                alert('Please sign in to browse homes');
+                return;
+              }
+              window.location.href = '/houses?purpose=buy';
+            }}
+            className="inline-block border border-blue-500 text-blue-600 font-semibold rounded-lg px-6 py-2 hover:bg-blue-50 transition cursor-pointer"
+          >
+            Browse homes
+          </button>
         </div>
         {/* Sell a home */}
         <div className="bg-white rounded-2xl shadow-md flex flex-col gap-4 items-center p-8 pb-12 text-center border border-gray-100 hover:scale-105 transition-all duration-300">
-          <img src="/sell-home.webp" alt="Sell a home" className="w-full h-auto object-contain mb-4" />
+          <img 
+            src="/sell-home.webp" 
+            alt="Sell a home" 
+            className="w-full h-auto object-contain mb-4"
+            onError={(e) => {
+              console.error('Failed to load sell-home.webp, trying fallback');
+              e.currentTarget.src = '/house.jpg';
+            }}
+            onLoad={() => {
+              console.log('Successfully loaded sell-home.webp');
+            }}
+          />
           <h3 className="text-3xl font-bold mb-2">Sell a home</h3>
           <p className="text-gray-500 mb-6">No matter what path you take to sell your home, we can help you navigate a successful sale.</p>
-          <Link href="/sell" passHref>
-            <span className="inline-block border border-blue-500 text-blue-600 font-semibold rounded-lg px-6 py-2 hover:bg-blue-50 transition cursor-pointer">See your options</span>
-          </Link>
+          <button
+            onClick={() => {
+              if (!session) {
+                alert('Please sign in to see selling options');
+                return;
+              }
+              window.location.href = '/sell';
+            }}
+            className="inline-block border border-blue-500 text-blue-600 font-semibold rounded-lg px-6 py-2 hover:bg-blue-50 transition cursor-pointer"
+          >
+            See your options
+          </button>
         </div>
         {/* Rent a home */}
         <div className="bg-white rounded-2xl shadow-md flex flex-col gap-4 items-center p-8 pb-12 text-center border border-gray-100 hover:scale-105 transition-all duration-300">
-          <img src="/rent-home.webp" alt="Rent a home" className="w-full h-auto object-contain mb-4" />
+          <img 
+            src="/rent-home.webp" 
+            alt="Rent a home" 
+            className="w-full h-auto object-contain mb-4"
+            onError={(e) => {
+              console.error('Failed to load rent-home.webp, trying fallback');
+              e.currentTarget.src = '/house.jpg';
+            }}
+            onLoad={() => {
+              console.log('Successfully loaded rent-home.webp');
+            }}
+          />
           <h3 className="text-3xl font-bold mb-2">Rent a home</h3>
           <p className="text-gray-500 mb-6">We're creating a seamless online experience – from shopping on the largest rental network to applying, to paying rent.</p>
-          <Link href="/houses?purpose=rent" passHref>
-            <span className="inline-block border border-blue-500 text-blue-600 font-semibold rounded-lg px-6 py-2 hover:bg-blue-50 transition cursor-pointer">Find rentals</span>
-          </Link>
+          <button
+            onClick={() => {
+              if (!session) {
+                alert('Please sign in to find rentals');
+                return;
+              }
+              window.location.href = '/houses?purpose=rent';
+            }}
+            className="inline-block border border-blue-500 text-blue-600 font-semibold rounded-lg px-6 py-2 hover:bg-blue-50 transition cursor-pointer"
+          >
+            Find rentals
+          </button>
         </div>
       </div>
     </main>
