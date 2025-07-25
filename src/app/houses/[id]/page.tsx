@@ -96,7 +96,6 @@ export default function ListingDetailPage() {
 
   useEffect(() => {
     if (!house) return;
-    // Fetch 5 houses with the same status, excluding the current house
     fetch(`/api/houses?status=${encodeURIComponent(house.homeStatus)}&exclude=${house.id}&limit=5`)
       .then((res) => res.json())
       .then((apiData) => {

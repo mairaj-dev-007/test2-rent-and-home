@@ -622,10 +622,10 @@ export default function DashboardPage() {
     <div className="max-w-7xl mx-auto py-10 px-4">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold">Your Listings</h1>
+        <h1 className="text-3xl font-bold text-blue-800">Your Listings</h1>
         <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
           <DialogTrigger asChild>
-            <Button className="flex items-center gap-2">
+            <Button className="flex items-center gap-2 bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 hover:from-blue-600 hover:via-blue-700 hover:to-blue-800 text-white">
               <Plus className="w-4 h-4" />
               Add House
             </Button>
@@ -789,7 +789,7 @@ export default function DashboardPage() {
                 <DialogClose asChild>
                   <Button type="button" variant="outline">Cancel</Button>
                 </DialogClose>
-                <Button type="submit">Add House</Button>
+                <Button className="bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 hover:from-blue-600 hover:via-blue-700 hover:to-blue-800 text-white" type="submit">Add House</Button>
               </DialogFooter>
             </form>
           </DialogContent>

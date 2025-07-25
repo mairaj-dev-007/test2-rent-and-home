@@ -24,7 +24,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Slider } from "@/components/ui/slider";
 import toast from 'react-hot-toast';
-import { BookingDialog } from "@/components/BookingDialog";
 
 const StaticMap = dynamic(() => import("@/components/StaticMap"), { ssr: false });
 
@@ -633,26 +632,18 @@ export default function ListingPage() {
                         </div>
                       </div>
                       {/* Action Button */}
-                      {house.homeStatus === 'RECENTLY_SOLD' ? (
-                        <Button
-                          className="w-full bg-gradient-to-r from-gray-500 to-gray-600 text-white font-semibold py-1.5 rounded-md shadow-sm opacity-60 cursor-not-allowed text-xs flex items-center justify-center"
-                          disabled
-                        >
-                          <Eye className="w-2.5 h-2.5 mr-1" />
-                          Sold
-                        </Button>
-                      ) : (
-                        <BookingDialog
-                          propertyId={house.id}
-                          propertyAddress={`${house.streetAddress}, ${house.city}, ${house.state}`}
-                          trigger={
-                            <Button className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-1.5 rounded-md shadow-sm hover:shadow-md transition-all duration-300 group-hover:scale-101 text-xs flex items-center justify-center">
-                              <Eye className="w-2.5 h-2.5 mr-1" />
-                              {house.homeStatus === 'FOR_RENT' ? 'Rent this house' : 'Buy this house'}
-                            </Button>
-                          }
-                        />
-                      )}
+                      <Button
+                        onClick={() => router.push(`/houses/${house.id}`)}
+                        className={`w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-1.5 rounded-md shadow-sm hover:shadow-md transition-all duration-300 group-hover:scale-101 text-xs flex items-center justify-center ${house.homeStatus === 'RECENTLY_SOLD' ? 'opacity-60 cursor-not-allowed' : ''}`}
+                        disabled={house.homeStatus === 'RECENTLY_SOLD'}
+                      >
+                        <Eye className="w-2.5 h-2.5 mr-1" />
+                        {house.homeStatus === 'RECENTLY_SOLD'
+                          ? 'Sold'
+                          : house.homeStatus === 'FOR_RENT'
+                            ? 'Rent this house'
+                            : 'Buy this house'}
+                      </Button>
                     </CardContent>
                   </Card>
                 </div>
