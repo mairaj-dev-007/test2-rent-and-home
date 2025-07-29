@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { X, ArrowLeft, BedDouble, Bath, Ruler, Calendar, Phone, Mail, Building2, Star, CheckCircle, MapPin, Home, Tag, Hash, Users, Layers, Globe, Fingerprint, Link2, Eye, Heart } from "lucide-react";
+import { X, ArrowLeft, BedDouble, Bath, Ruler, Calendar, Star, MapPin, Home, Tag, Hash, Users, Layers, Globe, Eye, Heart } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
@@ -77,10 +78,6 @@ export default function ListingDetailPage() {
   }, [status, router]);
 
   // Don't render anything if not authenticated
-  if (status === 'unauthenticated') {
-    return null;
-  }
-
   useEffect(() => {
     setLoading(true);
     fetch(`/api/houses/${id}`)
@@ -110,7 +107,7 @@ export default function ListingDetailPage() {
     fetch('/api/favorites')
       .then((res) => res.json())
       .then((data) => {
-        const isInFavorites = data.data?.some((favHouse: any) => favHouse.id === house.id);
+        const isInFavorites = data.data?.some((favHouse: House) => favHouse.id === house.id);
         setIsFavorite(isInFavorites);
       })
       .catch((error) => {
@@ -155,6 +152,11 @@ export default function ListingDetailPage() {
       });
     }
   };
+
+  // Don't render anything if not authenticated
+  if (status === 'unauthenticated') {
+    return null;
+  }
 
   if (loading) return (
     <div className="max-w-7xl mx-auto px-4 py-10 animate-pulse">
@@ -294,7 +296,6 @@ export default function ListingDetailPage() {
   if (!house) return <div className="p-12 text-center text-lg text-red-500">House not found.</div>;
 
   const isRent = house.homeStatus === 'FOR_RENT';
-  const isSale = house.homeStatus === 'FOR_SALE';
   const isSold = house.homeStatus === 'RECENTLY_SOLD';
 
   const pricePerSqft = house.price && house.livingArea ? Math.round(house.price / house.livingArea) : null;
@@ -302,9 +303,7 @@ export default function ListingDetailPage() {
   // Responsive class for max-w-4xl but full width on larger screens
   const carouselContainerClass = "w-full max-w-4xl xl:max-w-4xl 2xl:max-w-none";
 
-  const handleScheduleTour = () => {
-    // This function is no longer needed as we're using the BookingDrawer component
-  };
+
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-10">
@@ -340,10 +339,12 @@ export default function ListingDetailPage() {
                   </AlertDialogHeader>
                   <div className="max-h-[75vh] overflow-y-auto p-8 grid gap-8 bg-white">
                     {house.pictures?.map((img, i) => (
-                      <img
+                      <Image
                         key={i}
                         src={img.url}
                         alt={house.streetAddress}
+                        width={800}
+                        height={600}
                         className="w-full max-h-[70vh] object-contain rounded-xl border"
                       />
                     ))}
@@ -375,9 +376,11 @@ export default function ListingDetailPage() {
                   {house.pictures?.map((img, i) => (
                     <CarouselItem key={i}>
                       <div className="w-full h-[450px] flex items-center justify-center bg-gray-100 rounded-2xl overflow-hidden">
-                        <img
+                        <Image
                           src={img.url}
                           alt={house.streetAddress}
+                          width={800}
+                          height={450}
                           className="w-full h-full object-cover"
                         />
                       </div>
@@ -543,11 +546,16 @@ export default function ListingDetailPage() {
                       <Card className="min-w-[250px] !pt-0 pb-0 gap-0 rounded-lg shadow-sm border-0 overflow-hidden bg-white h-full flex flex-col hover:scale-101 transition-all duration-300 group-hover:shadow-md">
                         {/* Image Section */}
                         <div className="relative">
-                          <img
+                          <Image
                             src={house.pictures?.[0]?.url || "/house.jpg"}
                             alt={house.streetAddress}
+                            width={300}
+                            height={128}
                             className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-300"
-                            onError={(e) => (e.currentTarget.src = "/house.jpg")}
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.src = "/house.jpg";
+                            }}
                           />
                           {/* Status Badge */}
                           <div className="absolute top-1.5 left-1.5">

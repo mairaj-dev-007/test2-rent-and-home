@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { v2 as cloudinary } from 'cloudinary'
+import { Prisma } from '@prisma/client'
 
 cloudinary.config({
   cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest) {
     const exclude = searchParams.get('exclude');
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined;
 
-    const where: any = {};
+    const where: Prisma.HouseWhereInput = {};
     if (status) where.homeStatus = status;
     if (exclude) where.id = { not: exclude };
 
@@ -63,30 +64,32 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData()
     
     // Prepare house data
-    const houseData: any = {}
-    const images: any[] = []
+    const houseData: Record<string, string | number | null> = {}
+    const images: File[] = []
     
     for (const [key, value] of formData.entries()) {
       if (key === 'images') {
-        images.push(value)
+        if (value instanceof File) {
+          images.push(value)
+        }
       } else {
-        houseData[key] = value
+        houseData[key] = value as string
       }
     }
     
-    houseData.bedrooms = parseInt(houseData.bedrooms || '0')
-    houseData.bathrooms = parseInt(houseData.bathrooms || '0')
-    houseData.price = parseFloat(houseData.price || '0')
-    houseData.yearBuilt = parseInt(houseData.yearBuilt || '0')
-    houseData.livingArea = parseInt(houseData.livingArea || '0')
-    houseData.longitude = parseFloat(houseData.longitude || '0')
-    houseData.latitude = parseFloat(houseData.latitude || '0')
-    houseData.zpid = houseData.zpid ? parseInt(houseData.zpid) : null
+    houseData.bedrooms = parseInt(String(houseData.bedrooms || '0'))
+    houseData.bathrooms = parseInt(String(houseData.bathrooms || '0'))
+    houseData.price = parseFloat(String(houseData.price || '0'))
+    houseData.yearBuilt = parseInt(String(houseData.yearBuilt || '0'))
+    houseData.livingArea = parseInt(String(houseData.livingArea || '0'))
+    houseData.longitude = parseFloat(String(houseData.longitude || '0'))
+    houseData.latitude = parseFloat(String(houseData.latitude || '0'))
+    houseData.zpid = houseData.zpid ? parseInt(String(houseData.zpid)) : null
     houseData.ownerId = session.user.id
     houseData.datePostedString = houseData.datePostedString || new Date().toISOString();
 
     // Create house
-    const house = await prisma.house.create({ data: houseData })
+    const house = await prisma.house.create({ data: houseData as unknown as Prisma.HouseUncheckedCreateInput })
 
     // Upload images to Cloudinary and store in pictures table
     for (let i = 0; i < images.length; i++) {

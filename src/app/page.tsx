@@ -1,7 +1,7 @@
 "use client";
 
 import { HeroSection } from "@/components/hero-section";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Carousel,
   CarouselContent,
@@ -10,7 +10,7 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import Image from "next/image";
 import { BedDouble, Bath, Ruler, MapPin, Calendar, Eye } from "lucide-react";
 import { useSession } from "next-auth/react";
 
@@ -45,9 +45,7 @@ interface House {
   version?: number;
 }
 
-function formatAddress(house: House): string {
-  return `${house.streetAddress}, ${house.city}, ${house.state}, ${house.zipcode}`;
-}
+
 
 // Carousel skeleton card for homepage
 function CarouselHouseSkeleton() {
@@ -151,11 +149,16 @@ export default function Home() {
                     <Card className="min-w-[280px] !pt-0 pb-0 gap-0 rounded-lg shadow-sm border-0 overflow-hidden bg-white h-full flex flex-col hover:scale-101 transition-all duration-300 group-hover:shadow-md">
                       {/* Image Section */}
                       <div className="relative">
-                        <img
+                        <Image
                           src={house.pictures?.[0]?.url || "/house.jpg"}
                           alt={house.streetAddress}
+                          width={280}
+                          height={128}
                           className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-300"
-                          onError={(e) => (e.currentTarget.src = "/house.jpg")}
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = "/house.jpg";
+                          }}
                         />
                         {/* Status Badge */}
                         <div className="absolute top-1.5 left-1.5">
@@ -256,20 +259,23 @@ export default function Home() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16 mb-8 px-2 max-w-7xl mx-auto">
         {/* Buy a home */}
         <div className="bg-white rounded-2xl shadow-md flex flex-col gap-4 items-center p-8 pb-12 text-center border border-gray-100 hover:scale-105 transition-all duration-300">
-          <img 
+          <Image 
             src="/buy-home.webp" 
             alt="Buy a home" 
+            width={400}
+            height={300}
             className="w-full h-auto object-contain mb-4"
             onError={(e) => {
               console.error('Failed to load buy-home.webp, trying fallback');
-              e.currentTarget.src = '/house.jpg';
+              const target = e.target as HTMLImageElement;
+              target.src = '/house.jpg';
             }}
             onLoad={() => {
               console.log('Successfully loaded buy-home.webp');
             }}
           />
           <h3 className="text-3xl font-bold mb-2">Buy a home</h3>
-          <p className="text-gray-500 mb-6">Find your place with an immersive photo experience and the most listings, including things you won't find anywhere else.</p>
+          <p className="text-gray-500 mb-6">Find your place with an immersive photo experience and the most listings, including things you won&apos;t find anywhere else.</p>
           <button
             onClick={() => {
               if (!session) {
@@ -285,13 +291,16 @@ export default function Home() {
         </div>
         {/* Sell a home */}
         <div className="bg-white rounded-2xl shadow-md flex flex-col gap-4 items-center p-8 pb-12 text-center border border-gray-100 hover:scale-105 transition-all duration-300">
-          <img 
+          <Image 
             src="/sell-home.webp" 
             alt="Sell a home" 
+            width={400}
+            height={300}
             className="w-full h-auto object-contain mb-4"
             onError={(e) => {
               console.error('Failed to load sell-home.webp, trying fallback');
-              e.currentTarget.src = '/house.jpg';
+              const target = e.target as HTMLImageElement;
+              target.src = '/house.jpg';
             }}
             onLoad={() => {
               console.log('Successfully loaded sell-home.webp');
@@ -314,20 +323,23 @@ export default function Home() {
         </div>
         {/* Rent a home */}
         <div className="bg-white rounded-2xl shadow-md flex flex-col gap-4 items-center p-8 pb-12 text-center border border-gray-100 hover:scale-105 transition-all duration-300">
-          <img 
+          <Image 
             src="/rent-home.webp" 
             alt="Rent a home" 
+            width={400}
+            height={300}
             className="w-full h-auto object-contain mb-4"
             onError={(e) => {
               console.error('Failed to load rent-home.webp, trying fallback');
-              e.currentTarget.src = '/house.jpg';
+              const target = e.target as HTMLImageElement;
+              target.src = '/house.jpg';
             }}
             onLoad={() => {
               console.log('Successfully loaded rent-home.webp');
             }}
           />
           <h3 className="text-3xl font-bold mb-2">Rent a home</h3>
-          <p className="text-gray-500 mb-6">We're creating a seamless online experience – from shopping on the largest rental network to applying, to paying rent.</p>
+          <p className="text-gray-500 mb-6">We&apos;re creating a seamless online experience – from shopping on the largest rental network to applying, to paying rent.</p>
           <button
             onClick={() => {
               if (!session) {

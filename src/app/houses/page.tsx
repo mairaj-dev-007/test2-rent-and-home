@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
+import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Heart, BedDouble, Bath, Ruler, Search, MapPin, Calendar, Eye, X } from "lucide-react";
+import { Heart, BedDouble, Bath, Ruler, Search, MapPin, Calendar, Eye } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
+
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -58,9 +59,7 @@ interface House {
   __v?: number;
 }
 
-function formatAddress(house: House): string {
-  return `${house.streetAddress}, ${house.city}, ${house.state}, ${house.zipcode}`;
-}
+
 
 // Skeleton component for house cards
 function HouseSkeleton() {
@@ -124,7 +123,7 @@ function HouseSkeleton() {
   );
 }
 
-export default function ListingPage() {
+function ListingPageContent() {
   const { data: session, status } = useSession();
   const [houses, setHouses] = useState<House[]>([]);
   const [search, setSearch] = useState("");
@@ -136,18 +135,6 @@ export default function ListingPage() {
   const router = useRouter();
   const purpose = searchParams.get('purpose');
 
-  // Redirect to home page if not authenticated
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/');
-    }
-  }, [status, router]);
-
-  // Don't render anything if not authenticated
-  if (status === 'unauthenticated') {
-    return null;
-  }
-
   // Filter dialog state
   const [price, setPrice] = useState<number[]>([0, 2000000]);
   const [area, setArea] = useState<number[]>([0, 10000]);
@@ -156,6 +143,13 @@ export default function ListingPage() {
   const [homeTypes, setHomeTypes] = useState<string[]>([]);
   const [propertyStatus, setPropertyStatus] = useState<string>("any");
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
+
+  // Redirect to home page if not authenticated
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/');
+    }
+  }, [status, router]);
 
   // Fetch user favorites
   useEffect(() => {
@@ -207,7 +201,7 @@ export default function ListingPage() {
 
   useEffect(() => {
     const q = search.toLowerCase();
-    let filteredList = houses.filter((h) => {
+    const filteredList = houses.filter((h) => {
       // Purpose filter
       if (purpose === 'rent' && h.homeStatus !== 'FOR_RENT') return false;
       if (purpose === 'buy' && h.homeStatus !== 'FOR_SALE') return false;
@@ -233,7 +227,12 @@ export default function ListingPage() {
     if (searchParam && searchParam !== search) {
       setSearch(searchParam);
     }
-  }, []);
+  }, [searchParams, search]);
+
+  // Don't render anything if not authenticated
+  if (status === 'unauthenticated') {
+    return null;
+  }
 
   // Helper: filter houses based on filter state
   function filterHouses(houses: House[]) {
@@ -550,12 +549,17 @@ export default function ListingPage() {
                   <Card className="min-w-[300px] !pt-0 pb-0 gap-0 rounded-lg shadow-sm border-0 overflow-hidden bg-white h-full flex flex-col hover:scale-101 transition-all duration-300 group-hover:shadow-md">
                     {/* Image Section */}
                     <div className="relative">
-                      <img
+                      <Image
                         key={house.pictures?.[0]?.url || house.id}
                         src={house.pictures?.[0]?.url || '/house.jpg'}
                         alt={house.streetAddress}
+                        width={300}
+                        height={128}
                         className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-300"
-                        onError={(e) => (e.currentTarget.src = "/house.jpg")}
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = "/house.jpg";
+                        }}
                       />
                       {/* Status Badge */}
                       <div className="absolute top-1.5 left-1.5">
@@ -656,6 +660,14 @@ export default function ListingPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ListingPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ListingPageContent />
+    </Suspense>
   );
 }
 
