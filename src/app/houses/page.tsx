@@ -52,7 +52,7 @@ interface House {
   currency: string;
   homeType: string;
   datePostedString: string;
-  daysOnZillow?: number;
+  daysOnStickball?: number;
   url: string;
   createdAt: string;
   updatedAt: string;

@@ -53,7 +53,7 @@ interface House {
   currency: string;
   homeType: string;
   datePostedString: string;
-  daysOnZillow?: number;
+  daysOnStickball?: number;
   url: string;
   createdAt: string;
   updatedAt: string;
@@ -467,7 +467,7 @@ export default function ListingDetailPage() {
           <div className="flex items-center gap-3"><BedDouble className="w-5 h-5 text-blue-600" /><span className="font-semibold">Bedrooms:</span> {house.bedrooms}</div>
           <div className="flex items-center gap-3"><Bath className="w-5 h-5 text-green-600" /><span className="font-semibold">Bathrooms:</span> {house.bathrooms}</div>
           <div className="flex items-center gap-3"><Calendar className="w-5 h-5 text-gray-600" /><span className="font-semibold">Year Built:</span> {house.yearBuilt}</div>
-          <div className="flex items-center gap-3"><Star className="w-5 h-5 text-yellow-500" /><span className="font-semibold">Days on Zillow:</span> {house.daysOnZillow ?? 'N/A'}</div>
+          <div className="flex items-center gap-3"><Star className="w-5 h-5 text-yellow-500" /><span className="font-semibold">Days on Stickball:</span> {house.daysOnStickball ?? 'N/A'}</div>
           <div className="flex items-center gap-3"><Calendar className="w-5 h-5 text-gray-600" /><span className="font-semibold">Date Posted:</span> {house.datePostedString}</div>
           <div className="flex items-center gap-3"><Calendar className="w-5 h-5 text-gray-600" /><span className="font-semibold">Created At:</span> {house.createdAt}</div>
           <div className="flex items-center gap-3"><Calendar className="w-5 h-5 text-gray-600" /><span className="font-semibold">Updated At:</span> {house.updatedAt}</div>

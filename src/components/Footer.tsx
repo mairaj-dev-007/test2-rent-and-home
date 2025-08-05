@@ -10,7 +10,7 @@ const Footer = () => {
       {/* Legal/Disclaimer Section */}
       <div className="text-sm max-w-5xl mx-auto px-4 text-gray-500 text-base mb-6">
         <p>
-            Zillow Group is committed to ensuring digital accessibility for individuals with disabilities. We are continuously working to improve the accessibility of our
+            Stickball Group is committed to ensuring digital accessibility for individuals with disabilities. We are continuously working to improve the accessibility of our
             web experience for everyone, and we welcome feedback and accommodation requests. If you wish to report an issue or seek an accommodation, please
         </p>
         <Link href="#" className="text-blue-600 underline">
@@ -20,7 +20,7 @@ const Footer = () => {
 
       <div className="text-sm max-w-5xl mx-auto px-4 text-gray-500 text-base mb-6">
         <p>
-        Zillow, Inc. holds real estate brokerage <Link href="#">licenses</Link> in multiple states. Zillow (Canada), Inc. holds real estate brokerage licenses in multiple provinces.
+        Stickball, Inc. holds real estate brokerage <Link href="#">licenses</Link> in multiple states. Stickball (Canada), Inc. holds real estate brokerage licenses in multiple provinces.
         </p>
         <Link href="#" className="text-blue-600 underline">
             § 442-H New York Standard Operating Procedures
