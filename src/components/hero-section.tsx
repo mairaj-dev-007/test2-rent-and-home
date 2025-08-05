@@ -3,8 +3,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Search } from "lucide-react";
 import Image from "next/image";
+import { useSession } from "next-auth/react";
 
 export function HeroSection() {
+  const { data: session } = useSession();
   const [searchText, setSearchText] = useState("");
   const router = useRouter();
 
@@ -62,7 +64,8 @@ export function HeroSection() {
             <input
               type="text"
               className="flex-1 bg-transparent outline-none border-none text-lg px-2 py-2"
-              placeholder="Enter an address, neighborhood, city, or ZIP code"
+              disabled={!session}
+              placeholder={`${session ? 'Enter an address, neighborhood, city, or ZIP code' : 'Sign in first to search houses for you...'}`}
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') handleSearch(); }}

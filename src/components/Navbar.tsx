@@ -192,7 +192,7 @@ const Navbar = () => {
 
           {/* Navigation Links */}
           <div className="hidden md:flex items-center gap-6">
-            {navLinks.map((item) => (
+            {session && navLinks.map((item) => (
               <Link
                 key={item.label}
                 href={item.href}

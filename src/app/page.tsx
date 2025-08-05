@@ -13,6 +13,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { BedDouble, Bath, Ruler, MapPin, Calendar, Eye } from "lucide-react";
 import { useSession } from "next-auth/react";
+import { toast } from "react-hot-toast";
 
 // Define the type for a house listing
 interface House {
@@ -128,133 +129,135 @@ export default function Home() {
   return (
     <main>
       <HeroSection />
-      <div className="my-12 mx-auto px-20">
-        <h3 className="text-2xl font-bold mb-6 ml-4">Homes for you</h3>
-        <Carousel className="w-full" opts={{ loop: true, align: "start", slidesToScroll: 1 }}>
-          <CarouselContent className="-ml-4 py-3 bg-transparent">
-            {!session || carouselHouses.length === 0
-              ? Array.from({ length: 4 }).map((_, i) => (
-                  <CarouselItem
-                    key={i}
-                    className="pl-4 basis-80 md:basis-1/2 lg:basis-1/3 xl:basis-1/4"
-                  >
-                    <CarouselHouseSkeleton />
-                  </CarouselItem>
-                ))
-              : carouselHouses.map((house) => (
-                  <CarouselItem
-                    key={house.id}
-                    className="pl-4 basis-80 md:basis-1/2 lg:basis-1/3 xl:basis-1/4"
-                  >
-                    <Card className="min-w-[280px] !pt-0 pb-0 gap-0 rounded-lg shadow-sm border-0 overflow-hidden bg-white h-full flex flex-col hover:scale-101 transition-all duration-300 group-hover:shadow-md">
-                      {/* Image Section */}
-                      <div className="relative">
-                        <Image
-                          src={house.pictures?.[0]?.url || "/house.jpg"}
-                          alt={house.streetAddress}
-                          width={280}
-                          height={128}
-                          className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-300"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.src = "/house.jpg";
-                          }}
-                        />
-                        {/* Status Badge */}
-                        <div className="absolute top-1.5 left-1.5">
-                          <span className="bg-green-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full shadow-sm">
-                            {house.homeStatus}
-                          </span>
-                        </div>
-                        {/* Property Type Badge */}
-                        <div className="absolute top-1.5 right-1.5">
-                          <span className="bg-blue-600 text-white text-xs font-bold px-1.5 py-0.5 rounded-full shadow-sm">
-                            {house.homeType}
-                          </span>
-                        </div>
-                      </div>
-                      {/* Content Section */}
-                      <CardContent className="p-3 pb-3">
-                        {/* Price */}
-                        <div className="flex items-center gap-1 mb-1.5">
-                          <div className="text-base font-bold text-blue-700">{house.currency} {house.price.toLocaleString()}</div>
-                          <span className="text-xs text-gray-500">/ {house.homeStatus === 'For Rent' ? 'month' : 'total'}</span>
-                        </div>
-                        {/* Address (2 lines) */}
-                        <div className="mb-1.5">
-                          <div className="text-sm font-bold text-gray-900 group-hover:text-blue-700 transition-colors">
-                            {house.streetAddress}
+      {session && (  
+        <div className="my-12 mx-auto px-20">
+          <h3 className="text-2xl font-bold mb-6 ml-4">Homes for you</h3>
+          <Carousel className="w-full" opts={{ loop: true, align: "start", slidesToScroll: 1 }}>
+            <CarouselContent className="-ml-4 py-3 bg-transparent">
+              {!session || carouselHouses.length === 0
+                ? Array.from({ length: 4 }).map((_, i) => (
+                    <CarouselItem
+                      key={i}
+                      className="pl-4 basis-80 md:basis-1/2 lg:basis-1/3 xl:basis-1/4"
+                    >
+                      <CarouselHouseSkeleton />
+                    </CarouselItem>
+                  ))
+                : carouselHouses.map((house) => (
+                    <CarouselItem
+                      key={house.id}
+                      className="pl-4 basis-80 md:basis-1/2 lg:basis-1/3 xl:basis-1/4"
+                    >
+                      <Card className="min-w-[280px] !pt-0 pb-0 gap-0 rounded-lg shadow-sm border-0 overflow-hidden bg-white h-full flex flex-col hover:scale-101 transition-all duration-300 group-hover:shadow-md">
+                        {/* Image Section */}
+                        <div className="relative">
+                          <Image
+                            src={house.pictures?.[0]?.url || "/house.jpg"}
+                            alt={house.streetAddress}
+                            width={280}
+                            height={128}
+                            className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-300"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.src = "/house.jpg";
+                            }}
+                          />
+                          {/* Status Badge */}
+                          <div className="absolute top-1.5 left-1.5">
+                            <span className="bg-green-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full shadow-sm">
+                              {house.homeStatus}
+                            </span>
                           </div>
-                          <div className="text-xs text-gray-700">
-                            {house.city}, {house.state} {house.zipcode}
+                          {/* Property Type Badge */}
+                          <div className="absolute top-1.5 right-1.5">
+                            <span className="bg-blue-600 text-white text-xs font-bold px-1.5 py-0.5 rounded-full shadow-sm">
+                              {house.homeType}
+                            </span>
                           </div>
                         </div>
-                        {/* Key Features Grid */}
-                        <div className="grid grid-cols-3 gap-1 mb-2">
-                          <div className="flex flex-col items-center p-1.5 bg-blue-50 rounded-sm group-hover:bg-blue-100 transition-colors">
-                            <BedDouble className="w-3 h-3 text-blue-600 mb-0.5" />
-                            <span className="text-xs font-medium text-gray-700">{house.bedrooms}</span>
-                            <span className="text-xs text-gray-500">beds</span>
+                        {/* Content Section */}
+                        <CardContent className="p-3 pb-3">
+                          {/* Price */}
+                          <div className="flex items-center gap-1 mb-1.5">
+                            <div className="text-base font-bold text-blue-700">{house.currency} {house.price.toLocaleString()}</div>
+                            <span className="text-xs text-gray-500">/ {house.homeStatus === 'For Rent' ? 'month' : 'total'}</span>
                           </div>
-                          <div className="flex flex-col items-center p-1.5 bg-green-50 rounded-sm group-hover:bg-green-100 transition-colors">
-                            <Bath className="w-3 h-3 text-green-600 mb-0.5" />
-                            <span className="text-xs font-medium text-gray-700">{house.bathrooms}</span>
-                            <span className="text-xs text-gray-500">baths</span>
+                          {/* Address (2 lines) */}
+                          <div className="mb-1.5">
+                            <div className="text-sm font-bold text-gray-900 group-hover:text-blue-700 transition-colors">
+                              {house.streetAddress}
+                            </div>
+                            <div className="text-xs text-gray-700">
+                              {house.city}, {house.state} {house.zipcode}
+                            </div>
                           </div>
-                          <div className="flex flex-col items-center p-1.5 bg-purple-50 rounded-sm group-hover:bg-purple-100 transition-colors">
-                            <Ruler className="w-3 h-3 text-purple-600 mb-0.5" />
-                            <span className="text-xs font-medium text-gray-700">{house.livingArea.toLocaleString()}</span>
-                            <span className="text-xs text-gray-500">sqft</span>
+                          {/* Key Features Grid */}
+                          <div className="grid grid-cols-3 gap-1 mb-2">
+                            <div className="flex flex-col items-center p-1.5 bg-blue-50 rounded-sm group-hover:bg-blue-100 transition-colors">
+                              <BedDouble className="w-3 h-3 text-blue-600 mb-0.5" />
+                              <span className="text-xs font-medium text-gray-700">{house.bedrooms}</span>
+                              <span className="text-xs text-gray-500">beds</span>
+                            </div>
+                            <div className="flex flex-col items-center p-1.5 bg-green-50 rounded-sm group-hover:bg-green-100 transition-colors">
+                              <Bath className="w-3 h-3 text-green-600 mb-0.5" />
+                              <span className="text-xs font-medium text-gray-700">{house.bathrooms}</span>
+                              <span className="text-xs text-gray-500">baths</span>
+                            </div>
+                            <div className="flex flex-col items-center p-1.5 bg-purple-50 rounded-sm group-hover:bg-purple-100 transition-colors">
+                              <Ruler className="w-3 h-3 text-purple-600 mb-0.5" />
+                              <span className="text-xs font-medium text-gray-700">{house.livingArea.toLocaleString()}</span>
+                              <span className="text-xs text-gray-500">sqft</span>
+                            </div>
                           </div>
-                        </div>
-                        {/* Location and Date */}
-                        <div className="flex items-center justify-between mb-2 text-xs text-gray-600">
-                          <div className="flex items-center gap-1">
-                            <MapPin className="w-2.5 h-2.5 text-red-500" />
-                            <span className="truncate">{house.city}, {house.state}</span>
+                          {/* Location and Date */}
+                          <div className="flex items-center justify-between mb-2 text-xs text-gray-600">
+                            <div className="flex items-center gap-1">
+                              <MapPin className="w-2.5 h-2.5 text-red-500" />
+                              <span className="truncate">{house.city}, {house.state}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Calendar className="w-2.5 h-2.5 text-gray-400" />
+                              <span>Listed {new Date(house.datePostedString).toLocaleDateString()}</span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-1">
-                            <Calendar className="w-2.5 h-2.5 text-gray-400" />
-                            <span>Listed {new Date(house.datePostedString).toLocaleDateString()}</span>
+                          {/* Features Preview */}
+                          <div className="flex flex-wrap gap-1 mb-2">
+                            {/* The original code had features.slice(0, 2).map, but features is not defined in the new interface.
+                                Assuming the intent was to use a placeholder or remove this section if features are not available.
+                                For now, removing the map as features is not part of the House interface. */}
                           </div>
-                        </div>
-                        {/* Features Preview */}
-                        <div className="flex flex-wrap gap-1 mb-2">
-                          {/* The original code had features.slice(0, 2).map, but features is not defined in the new interface.
-                              Assuming the intent was to use a placeholder or remove this section if features are not available.
-                              For now, removing the map as features is not part of the House interface. */}
-                        </div>
-                        {/* Action Button */}
-                        <button
-                          onClick={() => {
-                            if (!session) {
-                              // Show a toast or alert that user needs to sign in
-                              alert('Please sign in to view property details');
-                              return;
-                            }
-                            if (house.homeStatus !== 'RECENTLY_SOLD') {
-                              window.location.href = `/houses/${house.id}`;
-                            }
-                          }}
-                          className={`w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-2.5 rounded-md shadow-sm hover:shadow-md transition-all duration-300 group-hover:scale-101 text-xs flex items-center justify-center ${house.homeStatus === 'RECENTLY_SOLD' ? 'opacity-60 cursor-not-allowed' : ''}`}
-                          disabled={house.homeStatus === 'RECENTLY_SOLD'}
-                        >
-                          <Eye className="w-2.5 h-2.5 mr-1" />
-                          {house.homeStatus === 'RECENTLY_SOLD'
-                            ? 'Sold'
-                            : house.homeStatus === 'FOR_RENT'
-                              ? 'Rent this house'
-                              : 'Buy this house'}
-                        </button>
-                      </CardContent>
-                    </Card>
-                  </CarouselItem>
-                ))}
-          </CarouselContent>
-          <CarouselPrevious size="icon" className="!w-10 !h-10" />
-          <CarouselNext size="icon" className="!w-10 !h-10" />
-        </Carousel>
-      </div>
+                          {/* Action Button */}
+                          <button
+                            onClick={() => {
+                              if (!session) {
+                                // Show a toast or alert that user needs to sign in
+                                alert('Please sign in to view property details');
+                                return;
+                              }
+                              if (house.homeStatus !== 'RECENTLY_SOLD') {
+                                window.location.href = `/houses/${house.id}`;
+                              }
+                            }}
+                            className={`w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-2.5 rounded-md shadow-sm hover:shadow-md transition-all duration-300 group-hover:scale-101 text-xs flex items-center justify-center ${house.homeStatus === 'RECENTLY_SOLD' ? 'opacity-60 cursor-not-allowed' : ''}`}
+                            disabled={house.homeStatus === 'RECENTLY_SOLD'}
+                          >
+                            <Eye className="w-2.5 h-2.5 mr-1" />
+                            {house.homeStatus === 'RECENTLY_SOLD'
+                              ? 'Sold'
+                              : house.homeStatus === 'FOR_RENT'
+                                ? 'Rent this house'
+                                : 'Buy this house'}
+                          </button>
+                        </CardContent>
+                      </Card>
+                    </CarouselItem>
+                  ))}
+            </CarouselContent>
+            <CarouselPrevious size="icon" className="!w-10 !h-10" />
+            <CarouselNext size="icon" className="!w-10 !h-10" />
+          </Carousel>
+        </div>
+      )}
       {/* 3 Feature Cards Section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16 mb-8 px-2 max-w-7xl mx-auto">
         {/* Buy a home */}
@@ -279,7 +282,7 @@ export default function Home() {
           <button
             onClick={() => {
               if (!session) {
-                alert('Please sign in to browse homes');
+                toast.error('Please sign in to browse homes');
                 return;
               }
               window.location.href = '/houses?purpose=buy';
@@ -311,7 +314,7 @@ export default function Home() {
           <button
             onClick={() => {
               if (!session) {
-                alert('Please sign in to see selling options');
+                toast.error('Please sign in to see selling options');
                 return;
               }
               window.location.href = '/sell';
@@ -343,7 +346,7 @@ export default function Home() {
           <button
             onClick={() => {
               if (!session) {
-                alert('Please sign in to find rentals');
+                toast.error('Please sign in to find rentals');
                 return;
               }
               window.location.href = '/houses?purpose=rent';
