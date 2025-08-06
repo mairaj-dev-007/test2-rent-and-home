@@ -5,6 +5,10 @@ import { authOptions } from '@/lib/auth'
 import { v2 as cloudinary } from 'cloudinary'
 import { Prisma } from '@prisma/client'
 
+import { promises as fs } from 'fs'
+import path from 'path'
+import os from 'os'
+
 cloudinary.config({
   cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -15,6 +19,44 @@ export const config = {
   api: {
     bodyParser: false,
   },
+}
+
+// Helper function to parse multipart form data with formidable
+async function parseFormData(request: NextRequest) {
+  const formData = await request.formData()
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'house-uploads-'))
+  
+  const fields: Record<string, string> = {}
+  const files: Record<string, Array<{
+    filepath: string;
+    originalFilename: string;
+    mimetype: string;
+    size: number;
+  }>> = {}
+  
+  for (const [key, value] of formData.entries()) {
+    if (value instanceof File) {
+      // Handle file uploads
+      if (!files[key]) files[key] = []
+      
+      // Save file to temp directory
+      const tempFilePath = path.join(tempDir, `${Date.now()}-${value.name}`)
+      const buffer = Buffer.from(await value.arrayBuffer())
+      await fs.writeFile(tempFilePath, buffer)
+      
+      files[key].push({
+        filepath: tempFilePath,
+        originalFilename: value.name,
+        mimetype: value.type,
+        size: value.size
+      })
+    } else {
+      // Handle regular form fields
+      fields[key] = value as string
+    }
+  }
+  
+  return { fields, files, tempDir }
 }
 
 export async function GET(request: NextRequest) {
@@ -60,23 +102,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Parse multipart form data using FormData
-    const formData = await request.formData()
+    // Parse form data using formidable
+    const { fields, files, tempDir } = await parseFormData(request)
     
     // Prepare house data
     const houseData: Record<string, string | number | null> = {}
-    const images: File[] = []
     
-    for (const [key, value] of formData.entries()) {
-      if (key === 'images') {
-        if (value instanceof File) {
-          images.push(value)
-        }
-      } else {
-        houseData[key] = value as string
-      }
-    }
+    // Extract house data from fields
+    Object.keys(fields).forEach(key => {
+      houseData[key] = fields[key] || ''
+    })
     
+    // Parse numeric fields
     houseData.bedrooms = parseInt(String(houseData.bedrooms || '0'))
     houseData.bathrooms = parseInt(String(houseData.bathrooms || '0'))
     houseData.price = parseFloat(String(houseData.price || '0'))
@@ -86,42 +123,83 @@ export async function POST(request: NextRequest) {
     houseData.latitude = parseFloat(String(houseData.latitude || '0'))
     houseData.zpid = houseData.zpid ? parseInt(String(houseData.zpid)) : null
     houseData.ownerId = session.user.id
-    houseData.datePostedString = houseData.datePostedString || new Date().toISOString();
+    houseData.datePostedString = houseData.datePostedString ? String(houseData.datePostedString) : new Date().toISOString()
 
     // Create house
-    const house = await prisma.house.create({ data: houseData as unknown as Prisma.HouseUncheckedCreateInput })
+    const house = await prisma.house.create({ 
+      data: houseData as unknown as Prisma.HouseUncheckedCreateInput 
+    })
 
-    // Upload images to Cloudinary and store in pictures table
-    for (let i = 0; i < images.length; i++) {
-      const file = images[i]
-      const bytes = await file.arrayBuffer()
-      const buffer = Buffer.from(bytes)
-      
-      const upload = await cloudinary.uploader.upload_stream(
-        { folder: 'houses' },
-        async (error, result) => {
-          if (error) {
-            console.error('Cloudinary upload error:', error)
-            return
-          }
-          if (result) {
-            await prisma.picture.create({
-              data: {
-                url: result.secure_url,
-                altText: `${house.streetAddress} - Photo ${i + 1}`,
-                isPrimary: i === 0,
-                order: i,
-                houseId: house.id,
-              },
-            })
-          }
-        }
-      ).end(buffer)
+    // Handle image uploads
+    const imageFiles = files.images || files.image || []
+    const imageArray = Array.isArray(imageFiles) ? imageFiles : [imageFiles]
+    
+    for (let i = 0; i < imageArray.length; i++) {
+      const file = imageArray[i]
+      if (!file || !file.filepath) continue
+
+      try {
+        // Read the file
+        const fileBuffer = await fs.readFile(file.filepath)
+        
+        // Upload to Cloudinary
+        const result = await new Promise<{ secure_url: string }>((resolve, reject) => {
+          cloudinary.uploader.upload_stream(
+            { 
+              folder: 'houses',
+              resource_type: 'image',
+              transformation: [
+                { width: 1200, height: 800, crop: 'fill' },
+                { quality: 'auto' }
+              ]
+            },
+            (error, result) => {
+              if (error) reject(error)
+              else if (result) resolve(result)
+              else reject(new Error('Upload failed'))
+            }
+          ).end(fileBuffer)
+        })
+
+        // Save to database
+        await prisma.picture.create({
+          data: {
+            url: result.secure_url,
+            altText: `${house.streetAddress} - Photo ${i + 1}`,
+            isPrimary: i === 0,
+            order: i,
+            houseId: house.id,
+          },
+        })
+
+        // Clean up temporary file
+        await fs.unlink(file.filepath)
+      } catch (uploadError) {
+        console.error(`Error uploading image ${i + 1}:`, uploadError)
+        // Continue with other images even if one fails
+      }
+    }
+
+    // Clean up temporary directory
+    try {
+      await fs.rmdir(tempDir)
+    } catch (cleanupError) {
+      console.error('Error cleaning up temp directory:', cleanupError)
     }
 
     return NextResponse.json({ data: house }, { status: 201 })
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error in house POST:', error)
+    
+    // Handle Prisma unique constraint violation for zpid
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002' && 
+        'meta' in error && error.meta && typeof error.meta === 'object' && 'target' in error.meta && 
+        Array.isArray(error.meta.target) && error.meta.target.includes('zpid')) {
+      return NextResponse.json({ 
+        error: 'A house with this ZPID already exists. Please use a different ZPID or leave it empty.' 
+      }, { status: 400 })
+    }
+    
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 } 

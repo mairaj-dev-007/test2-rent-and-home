@@ -95,13 +95,24 @@ export async function PUT(
         currency: body.currency,
         homeType: body.homeType,
         datePostedString: body.datePostedString,
+        zpid: body.zpid ? parseInt(String(body.zpid)) : null,
       }
     })
 
     return NextResponse.json({ data: house })
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Database error:', error)
+    
+    // Handle Prisma unique constraint violation for zpid
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002' && 
+        'meta' in error && error.meta && typeof error.meta === 'object' && 'target' in error.meta && 
+        Array.isArray(error.meta.target) && error.meta.target.includes('zpid')) {
+      return NextResponse.json({ 
+        error: 'A house with this ZPID already exists. Please use a different ZPID or leave it empty.' 
+      }, { status: 400 })
+    }
+    
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

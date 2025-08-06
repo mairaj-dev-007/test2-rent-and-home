@@ -130,7 +130,7 @@ export default function Home() {
     <main>
       <HeroSection />
       {session && (  
-        <div className="my-12 mx-auto px-20">
+        <div className="my-12 mx-auto max-w-7xl px-20">
           <h3 className="text-2xl font-bold mb-6 ml-4">Homes for you</h3>
           <Carousel className="w-full" opts={{ loop: true, align: "start", slidesToScroll: 1 }}>
             <CarouselContent className="-ml-4 py-3 bg-transparent">

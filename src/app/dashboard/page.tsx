@@ -110,17 +110,14 @@ const initialForm: HouseForm = {
   yearBuilt: "",
   livingArea: "",
   homeType: "",
-  homeStatus: "FOR_SALE",
+  homeStatus: "",
   description: "",
   currency: "USD",
   zpid: "",
-  longitude: "0",
-  latitude: "0",
+  longitude: "",
+  latitude: "",
 
 };
-
-const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || '';
-const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || '';
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
@@ -136,6 +133,8 @@ export default function DashboardPage() {
   const [addForm, setAddForm] = React.useState<HouseForm>(initialForm);
   const [images, setImages] = React.useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = React.useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -191,6 +190,7 @@ export default function DashboardPage() {
 
   const handleAddHouse = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     try {
       // Prepare multipart form data
       const formData = new FormData();
@@ -230,56 +230,95 @@ export default function DashboardPage() {
         icon: '❌',
         duration: 4000,
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleEdit = async (house: House, formData: FormData) => {
+  const handleEdit = async (house: House, formData: FormData, e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    
+    // Prepare updated house data
+    const updatedHouseData = {
+      streetAddress: formData.get('streetAddress') as string,
+      city: formData.get('city') as string,
+      state: formData.get('state') as string,
+      zipcode: formData.get('zipcode') as string,
+      price: parseFloat(formData.get('price') as string),
+      homeType: formData.get('homeType') as string,
+      bedrooms: parseInt(formData.get('bedrooms') as string),
+      bathrooms: parseInt(formData.get('bathrooms') as string),
+      livingArea: parseInt(formData.get('livingArea') as string),
+      yearBuilt: parseInt(formData.get('yearBuilt') as string),
+      description: formData.get('description') as string,
+      homeStatus: formData.get('homeStatus') as string,
+      zpid: formData.get('zpid') ? parseInt(formData.get('zpid') as string) : null,
+      currency: formData.get('currency') as string,
+      longitude: parseFloat(formData.get('longitude') as string),
+      latitude: parseFloat(formData.get('latitude') as string),
+    };
+
+    // Optimistic update - update local state immediately
+    const optimisticHouse = { ...house, ...updatedHouseData };
+    setData(prevData => 
+      prevData.map(h => h.id === house.id ? optimisticHouse : h)
+    );
+    
+    // Close the dialog immediately for better UX
+    setEditingHouse(null);
+    
     try {
       const response = await fetch(`/api/houses/${house.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          streetAddress: formData.get('streetAddress'),
-          city: formData.get('city'),
-          state: formData.get('state'),
-          zipcode: formData.get('zipcode'),
-          price: parseFloat(formData.get('price') as string),
-          homeType: formData.get('homeType'),
-          bedrooms: parseInt(formData.get('bedrooms') as string),
-          bathrooms: parseInt(formData.get('bathrooms') as string),
-          livingArea: parseInt(formData.get('livingArea') as string),
-          yearBuilt: parseInt(formData.get('yearBuilt') as string),
-          description: formData.get('description'),
-          homeStatus: formData.get('homeStatus'),
-          zpid: formData.get('zpid') ? parseInt(formData.get('zpid') as string) : null,
-          currency: formData.get('currency'),
-          longitude: parseFloat(formData.get('longitude') as string),
-          latitude: parseFloat(formData.get('latitude') as string),
-        }),
+        body: JSON.stringify(updatedHouseData),
       });
 
       if (response.ok) {
+        const result = await response.json();
+        // Update with actual server response
+        setData(prevData => 
+          prevData.map(h => h.id === house.id ? result.data : h)
+        );
+        
         toast.success('House updated successfully!', {
           icon: '✅',
           duration: 3000,
         });
-        setEditingHouse(null);
-        fetchUserHouses(); // Refresh the data
       } else {
+        // Revert optimistic update on error
+        setData(prevData => 
+          prevData.map(h => h.id === house.id ? house : h)
+        );
+        
         const error = await response.json();
         toast.error(`Error updating house: ${error.error}`, {
           icon: '❌',
           duration: 4000,
         });
+        
+        // Reopen dialog on error so user can try again
+        setEditingHouse(house);
       }
     } catch (error) {
+      // Revert optimistic update on error
+      setData(prevData => 
+        prevData.map(h => h.id === house.id ? house : h)
+      );
+      
       console.error('Error updating house:', error);
       toast.error('Failed to update house. Please try again.', {
         icon: '❌',
         duration: 4000,
       });
+      
+      // Reopen dialog on error so user can try again
+      setEditingHouse(house);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -470,7 +509,7 @@ export default function DashboardPage() {
                 onSubmit={e => {
                   e.preventDefault();
                   const formData = new FormData(e.currentTarget);
-                  handleEdit(row.original, formData);
+                  handleEdit(row.original, formData, e);
                 }}
                 className="space-y-4"
               >
@@ -555,9 +594,18 @@ export default function DashboardPage() {
                 </div>
                 <DialogFooter>
                   <DialogClose asChild>
-                    <Button type="button" variant="outline">Cancel</Button>
+                    <Button type="button" variant="outline" disabled={isSubmitting}>Cancel</Button>
                   </DialogClose>
-                  <Button type="submit">Save changes</Button>
+                  <Button type="submit" disabled={isSubmitting} className="min-w-[120px]">
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        Saving...
+                      </>
+                    ) : (
+                      'Save Changes'
+                    )}
+                  </Button>
                 </DialogFooter>
               </form>
             </DialogContent>
@@ -742,6 +790,7 @@ export default function DashboardPage() {
                     onChange={handleImageChange}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                     id="image-upload"
+                    required
                   />
                   <label 
                     htmlFor="image-upload"
@@ -789,7 +838,7 @@ export default function DashboardPage() {
                 <DialogClose asChild>
                   <Button type="button" variant="outline">Cancel</Button>
                 </DialogClose>
-                <Button className="bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 hover:from-blue-600 hover:via-blue-700 hover:to-blue-800 text-white" type="submit">Add House</Button>
+                <Button className="bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 hover:from-blue-600 hover:via-blue-700 hover:to-blue-800 text-white" type="submit" disabled={isSubmitting}>{isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Add House'}</Button>
               </DialogFooter>
             </form>
           </DialogContent>

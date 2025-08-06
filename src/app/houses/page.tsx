@@ -57,6 +57,7 @@ interface House {
   createdAt: string;
   updatedAt: string;
   __v?: number;
+  ownerId: string;
 }
 
 
@@ -581,8 +582,8 @@ function ListingPageContent() {
                             e.stopPropagation();
                             toggleFavorite(house.id);
                           }}
-                          disabled={loadingFavorites}
-                          className="absolute bottom-1.5 left-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-white rounded-full p-1.5 shadow-sm hover:shadow-md"
+                          disabled={loadingFavorites || house.ownerId === session?.user?.id}
+                          className={`absolute bottom-1.5 left-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-white rounded-full p-1.5 shadow-sm hover:shadow-md ${house.ownerId === session?.user?.id ? 'bg-gray-200 cursor-not-allowed' : ''}`}
                         >
                           <Heart 
                             className={`w-4 h-4 ${favorites.includes(house.id) ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} 
