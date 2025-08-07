@@ -21,6 +21,14 @@ export const config = {
   },
 }
 
+// File-like interface for compatibility with both browser File and Node.js runtime
+interface FileValue {
+  name: string;
+  type: string;
+  size: number;
+  arrayBuffer(): Promise<ArrayBuffer>;
+}
+
 // Helper function to parse multipart form data with formidable
 async function parseFormData(request: NextRequest) {
   const formData = await request.formData()
@@ -35,22 +43,29 @@ async function parseFormData(request: NextRequest) {
   }>> = {}
   
   for (const [key, value] of formData.entries()) {
-    if (value instanceof File) {
+    console.log(`🔍 Processing form entry - Key: ${key}, Value type: ${typeof value}, Constructor: ${value.constructor.name}`)
+    
+    // Check if it's a file by checking for file-like properties instead of instanceof File
+    if (value && typeof value === 'object' && 'arrayBuffer' in value && 'name' in value && 'type' in value) {
+      const fileValue = value as FileValue // Cast to FileValue interface for type safety
+      console.log(`📁 Detected file: ${fileValue.name}, type: ${fileValue.type}, size: ${fileValue.size}`)
       // Handle file uploads
       if (!files[key]) files[key] = []
       
       // Save file to temp directory
-      const tempFilePath = path.join(tempDir, `${Date.now()}-${value.name}`)
-      const buffer = Buffer.from(await value.arrayBuffer())
+      const tempFilePath = path.join(tempDir, `${Date.now()}-${fileValue.name}`)
+      const buffer = Buffer.from(await fileValue.arrayBuffer())
       await fs.writeFile(tempFilePath, buffer)
       
       files[key].push({
         filepath: tempFilePath,
-        originalFilename: value.name,
-        mimetype: value.type,
-        size: value.size
+        originalFilename: fileValue.name,
+        mimetype: fileValue.type,
+        size: fileValue.size
       })
+      console.log(`✅ File saved to: ${tempFilePath}`)
     } else {
+      console.log(`📝 Regular field: ${key} = ${value}`)
       // Handle regular form fields
       fields[key] = value as string
     }

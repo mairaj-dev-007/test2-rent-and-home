@@ -110,7 +110,7 @@ const initialForm: HouseForm = {
   yearBuilt: "",
   livingArea: "",
   homeType: "",
-  homeStatus: "",
+  homeStatus: "FOR_SALE",
   description: "",
   currency: "USD",
   zpid: "",
